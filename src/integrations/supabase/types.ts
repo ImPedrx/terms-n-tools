@@ -14,7 +14,161 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analysts: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      equipment: {
+        Row: {
+          assigned_term_id: string | null
+          assigned_to: string | null
+          brand: string
+          created_at: string
+          id: string
+          model: string
+          observations: string | null
+          patrimony: string | null
+          serial_number: string
+          status: Database["public"]["Enums"]["equipment_status"]
+          type: Database["public"]["Enums"]["equipment_type"]
+          updated_at: string
+        }
+        Insert: {
+          assigned_term_id?: string | null
+          assigned_to?: string | null
+          brand: string
+          created_at?: string
+          id?: string
+          model: string
+          observations?: string | null
+          patrimony?: string | null
+          serial_number: string
+          status?: Database["public"]["Enums"]["equipment_status"]
+          type: Database["public"]["Enums"]["equipment_type"]
+          updated_at?: string
+        }
+        Update: {
+          assigned_term_id?: string | null
+          assigned_to?: string | null
+          brand?: string
+          created_at?: string
+          id?: string
+          model?: string
+          observations?: string | null
+          patrimony?: string | null
+          serial_number?: string
+          status?: Database["public"]["Enums"]["equipment_status"]
+          type?: Database["public"]["Enums"]["equipment_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_equipment_term"
+            columns: ["assigned_term_id"]
+            isOneToOne: false
+            referencedRelation: "responsibility_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      responsibility_terms: {
+        Row: {
+          access_password: string
+          access_token: string
+          analyst_id: string
+          analyst_name: string
+          analyst_signature_date: string | null
+          analyst_signature_name: string | null
+          collaborator_name: string
+          collaborator_signature_date: string | null
+          collaborator_signature_name: string | null
+          created_at: string
+          equipment_description: string
+          equipment_id: string | null
+          id: string
+          patrimony: string | null
+          serial_number: string
+          status: Database["public"]["Enums"]["term_status"]
+          term_text: string
+          ticket_number: string
+          updated_at: string
+        }
+        Insert: {
+          access_password: string
+          access_token: string
+          analyst_id: string
+          analyst_name: string
+          analyst_signature_date?: string | null
+          analyst_signature_name?: string | null
+          collaborator_name: string
+          collaborator_signature_date?: string | null
+          collaborator_signature_name?: string | null
+          created_at?: string
+          equipment_description: string
+          equipment_id?: string | null
+          id?: string
+          patrimony?: string | null
+          serial_number: string
+          status?: Database["public"]["Enums"]["term_status"]
+          term_text: string
+          ticket_number: string
+          updated_at?: string
+        }
+        Update: {
+          access_password?: string
+          access_token?: string
+          analyst_id?: string
+          analyst_name?: string
+          analyst_signature_date?: string | null
+          analyst_signature_name?: string | null
+          collaborator_name?: string
+          collaborator_signature_date?: string | null
+          collaborator_signature_name?: string | null
+          created_at?: string
+          equipment_description?: string
+          equipment_id?: string | null
+          id?: string
+          patrimony?: string | null
+          serial_number?: string
+          status?: Database["public"]["Enums"]["term_status"]
+          term_text?: string
+          ticket_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "responsibility_terms_analyst_id_fkey"
+            columns: ["analyst_id"]
+            isOneToOne: false
+            referencedRelation: "analysts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "responsibility_terms_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +177,28 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      equipment_status:
+        | "disponivel"
+        | "entregue"
+        | "em_manutencao"
+        | "reservado"
+        | "baixado"
+      equipment_type:
+        | "notebook"
+        | "mouse"
+        | "teclado"
+        | "projetor"
+        | "workstation"
+        | "monitor"
+        | "tablet"
+        | "celular"
+        | "outros"
+      term_status:
+        | "rascunho"
+        | "pendente_colaborador"
+        | "aguardando_analista"
+        | "totalmente_assinado"
+        | "cancelado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +325,32 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      equipment_status: [
+        "disponivel",
+        "entregue",
+        "em_manutencao",
+        "reservado",
+        "baixado",
+      ],
+      equipment_type: [
+        "notebook",
+        "mouse",
+        "teclado",
+        "projetor",
+        "workstation",
+        "monitor",
+        "tablet",
+        "celular",
+        "outros",
+      ],
+      term_status: [
+        "rascunho",
+        "pendente_colaborador",
+        "aguardando_analista",
+        "totalmente_assinado",
+        "cancelado",
+      ],
+    },
   },
 } as const
