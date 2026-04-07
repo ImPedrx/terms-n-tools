@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Monitor, Lock, Loader2, CheckCircle2 } from 'lucide-react';
@@ -16,6 +17,7 @@ export default function CollaboratorSign() {
   const [authenticated, setAuthenticated] = useState(false);
   const [signatureName, setSignatureName] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [consentChecked, setConsentChecked] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -146,7 +148,7 @@ export default function CollaboratorSign() {
               <p><strong>Chamado:</strong> {term.ticket_number}</p>
             </div>
 
-            <p className="text-justify leading-relaxed">{term.term_text}</p>
+            <div className="text-justify leading-relaxed whitespace-pre-line">{term.term_text}</div>
 
             <div className="border-t pt-4 space-y-4">
               <h3 className="font-bold">Assinatura Digital</h3>
@@ -160,9 +162,22 @@ export default function CollaboratorSign() {
                   <p className="font-signature text-3xl">{signatureName}</p>
                 </div>
               )}
+
+              <div className="flex items-start space-x-3 rounded-lg border border-border bg-muted/50 p-4">
+                <Checkbox
+                  id="consent"
+                  checked={consentChecked}
+                  onCheckedChange={(v) => setConsentChecked(v === true)}
+                  className="mt-0.5"
+                />
+                <label htmlFor="consent" className="text-sm leading-relaxed cursor-pointer select-none">
+                  Declaro que li e estou de acordo com os termos descritos neste documento e que esta assinatura digital é válida exclusivamente para este termo de responsabilidade.
+                </label>
+              </div>
+
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setSignatureName('')} disabled={!signatureName}>Limpar</Button>
-                <Button onClick={() => signMutation.mutate()} disabled={!signatureName || signMutation.isPending} className="flex-1">
+                <Button variant="outline" onClick={() => { setSignatureName(''); setConsentChecked(false); }} disabled={!signatureName}>Limpar</Button>
+                <Button onClick={() => signMutation.mutate()} disabled={!signatureName || !consentChecked || signMutation.isPending} className="flex-1">
                   {signMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Confirmar Assinatura
                 </Button>
