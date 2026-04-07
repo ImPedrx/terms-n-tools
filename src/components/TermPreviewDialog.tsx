@@ -48,7 +48,7 @@ export function TermPreviewDialog({ termId, onClose }: Props) {
         .field-label { font-weight: 600; color: #333; white-space: nowrap; }
         .field-value { color: #555; }
         .field-full { grid-column: 1 / -1; }
-        .term-text { font-size: 13px; text-align: justify; line-height: 1.8; color: #333; background: #f8f9fa; border-left: 3px solid #1565C0; padding: 16px 20px; border-radius: 0 4px 4px 0; }
+        .term-text { font-size: 13px; text-align: justify; line-height: 1.8; color: #333; background: #f8f9fa; border-left: 3px solid #1565C0; padding: 16px 20px; border-radius: 0 4px 4px 0; white-space: pre-line; }
         .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 40px; }
         .sig-block { text-align: center; padding-top: 16px; }
         .sig-line { border-top: 1px solid #333; margin: 0 16px; }
@@ -162,7 +162,7 @@ export function TermPreviewDialog({ termId, onClose }: Props) {
           </div>
 
           {/* Term Text */}
-          <div className="text-sm text-justify leading-relaxed text-gray-700 bg-gray-50 border-l-[3px] border-blue-700 py-4 px-5 rounded-r">
+          <div className="text-sm text-justify leading-relaxed text-gray-700 bg-gray-50 border-l-[3px] border-blue-700 py-4 px-5 rounded-r whitespace-pre-line">
             {term.term_text}
           </div>
 
