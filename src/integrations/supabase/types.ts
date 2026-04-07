@@ -104,6 +104,8 @@ export type Database = {
           equipment_id: string | null
           id: string
           patrimony: string | null
+          returned_at: string | null
+          returned_by: string | null
           serial_number: string
           status: Database["public"]["Enums"]["term_status"]
           term_text: string
@@ -125,6 +127,8 @@ export type Database = {
           equipment_id?: string | null
           id?: string
           patrimony?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
           serial_number: string
           status?: Database["public"]["Enums"]["term_status"]
           term_text: string
@@ -146,6 +150,8 @@ export type Database = {
           equipment_id?: string | null
           id?: string
           patrimony?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
           serial_number?: string
           status?: Database["public"]["Enums"]["term_status"]
           term_text?: string
@@ -168,6 +174,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
       }
     }
     Views: {

@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { DEFAULT_TERM_TEXT } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
+import { useSettings } from '@/hooks/useSettings';
 
 function generateToken() {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 16);
@@ -27,11 +27,12 @@ export default function NewTerm() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { data: settings } = useSettings();
 
   const { data: equipment } = useQuery({
     queryKey: ['equipment-available'],
     queryFn: async () => {
-      const { data } = await supabase.from('equipment').select('*').order('brand');
+      const { data } = await supabase.from('equipment').select('*').eq('status', 'disponivel').order('brand');
       return data || [];
     },
   });
@@ -66,7 +67,7 @@ export default function NewTerm() {
         status: 'pendente_colaborador',
         access_token: token,
         access_password: password,
-        term_text: DEFAULT_TERM_TEXT,
+        term_text: settings?.term_text || 'Termo de responsabilidade.',
       }).select().single();
 
       if (error) throw error;
@@ -142,7 +143,7 @@ export default function NewTerm() {
 
             <div className="rounded-lg border p-4">
               <Label className="text-xs text-muted-foreground mb-2 block">Texto do Termo</Label>
-              <p className="text-sm">{DEFAULT_TERM_TEXT}</p>
+              <p className="text-sm">{settings?.term_text || 'Carregando...'}</p>
             </div>
 
             <Button type="submit" className="w-full" disabled={createMutation.isPending || !equipmentId || !analystId || !collaboratorName || !ticketNumber}>
