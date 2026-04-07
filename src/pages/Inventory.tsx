@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, RotateCcw } from 'lucide-react';
+import { ReturnEquipmentDialog } from '@/components/ReturnEquipmentDialog';
 import { EQUIPMENT_TYPES, EQUIPMENT_STATUS } from '@/lib/constants';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -38,6 +39,7 @@ export default function Inventory() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<EquipmentForm>(emptyForm);
+  const [returnEquipment, setReturnEquipment] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -206,6 +208,9 @@ export default function Inventory() {
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(eq)}><Pencil className="h-4 w-4" /></Button>
+                      {eq.status === 'entregue' && (
+                        <Button variant="ghost" size="icon" onClick={() => setReturnEquipment(eq)} title="Devolver"><RotateCcw className="h-4 w-4 text-warning" /></Button>
+                      )}
                       <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(eq.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
                   </TableCell>
@@ -215,6 +220,7 @@ export default function Inventory() {
           </TableBody>
         </Table>
       </div>
+      {returnEquipment && <ReturnEquipmentDialog equipment={returnEquipment} onClose={() => setReturnEquipment(null)} />}
     </div>
   );
 }
