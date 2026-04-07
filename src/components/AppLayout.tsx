@@ -4,6 +4,7 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { signOut, user } = useAuth();
@@ -17,6 +18,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <SidebarTrigger />
             <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground">{user?.email}</span>
+              <ThemeToggle />
               <Button variant="ghost" size="icon" onClick={signOut} title="Sair">
                 <LogOut className="h-4 w-4" />
               </Button>
