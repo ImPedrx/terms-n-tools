@@ -117,7 +117,7 @@ export function TermPreviewDialog({ termId, onClose }: Props) {
           </div>
         ` : ''}
 
-        <div class="footer">Documento gerado eletronicamente — TI Control</div>
+        <div class="footer">Documento gerado eletronicamente — Aerrnova IT Tools</div>
       </body></html>
     `);
     printWindow.document.close();

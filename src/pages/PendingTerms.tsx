@@ -53,7 +53,7 @@ export default function PendingTerms() {
   });
 
   const copyLink = (token: string, password: string) => {
-    const publishedUrl = 'https://terms-n-tools.lovable.app';
+    const publishedUrl = window.location.origin;
     const link = `${publishedUrl}/assinar/${token}`;
     navigator.clipboard.writeText(`Link: ${link}\nSenha: ${password}`);
     toast({ title: 'Link e senha copiados!' });
