@@ -76,7 +76,8 @@ export default function NewTerm() {
     onSuccess: (term) => {
       queryClient.invalidateQueries({ queryKey: ['terms'] });
       queryClient.invalidateQueries({ queryKey: ['terms-stats'] });
-      const link = `${window.location.origin}/assinar/${term.access_token}`;
+      const publishedUrl = 'https://terms-n-tools.lovable.app';
+      const link = `${publishedUrl}/assinar/${term.access_token}`;
       toast({
         title: 'Termo criado com sucesso!',
         description: `Link: ${link} | Senha: ${term.access_password}`,
