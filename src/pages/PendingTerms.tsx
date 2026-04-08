@@ -1,18 +1,24 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, Link2, Copy } from 'lucide-react';
+import { Eye, Copy, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { TermPreviewDialog } from '@/components/TermPreviewDialog';
 import { AnalystSignDialog } from '@/components/AnalystSignDialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function PendingTerms() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [previewTermId, setPreviewTermId] = useState<string | null>(null);
   const [signTermId, setSignTermId] = useState<string | null>(null);
+  const [deleteTermId, setDeleteTermId] = useState<string | null>(null);
 
   const { data: terms, isLoading } = useQuery({
     queryKey: ['terms-pending'],
@@ -26,8 +32,29 @@ export default function PendingTerms() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (termId: string) => {
+      const term = terms?.find(t => t.id === termId);
+      const { error } = await supabase.from('responsibility_terms').delete().eq('id', termId);
+      if (error) throw error;
+      // If equipment was linked, set it back to available
+      if (term?.equipment_id) {
+        await supabase.from('equipment').update({ status: 'disponivel' as const, assigned_to: null, assigned_term_id: null }).eq('id', term.equipment_id);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['terms-pending'] });
+      queryClient.invalidateQueries({ queryKey: ['terms-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment-available'] });
+      toast({ title: 'Termo excluído com sucesso!' });
+      setDeleteTermId(null);
+    },
+    onError: () => toast({ title: 'Erro ao excluir termo', variant: 'destructive' }),
+  });
+
   const copyLink = (token: string, password: string) => {
-    const link = `${window.location.origin}/assinar/${token}`;
+    const publishedUrl = 'https://terms-n-tools.lovable.app';
+    const link = `${publishedUrl}/assinar/${token}`;
     navigator.clipboard.writeText(`Link: ${link}\nSenha: ${password}`);
     toast({ title: 'Link e senha copiados!' });
   };
@@ -84,6 +111,9 @@ export default function PendingTerms() {
                         Assinar
                       </Button>
                     )}
+                    <Button variant="ghost" size="icon" onClick={() => setDeleteTermId(term.id)} title="Excluir" className="text-destructive hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -94,6 +124,23 @@ export default function PendingTerms() {
 
       {previewTermId && <TermPreviewDialog termId={previewTermId} onClose={() => setPreviewTermId(null)} />}
       {signTermId && <AnalystSignDialog termId={signTermId} onClose={() => setSignTermId(null)} />}
+
+      <AlertDialog open={!!deleteTermId} onOpenChange={() => setDeleteTermId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Termo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este termo? Esta ação não pode ser desfeita. O equipamento vinculado voltará ao status "Disponível".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteTermId && deleteMutation.mutate(deleteTermId)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

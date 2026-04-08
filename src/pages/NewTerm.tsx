@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
+import { EQUIPMENT_TYPES } from '@/lib/constants';
 
 function generateToken() {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 16);
@@ -24,6 +25,7 @@ export default function NewTerm() {
   const [collaboratorName, setCollaboratorName] = useState('');
   const [analystId, setAnalystId] = useState('');
   const [ticketNumber, setTicketNumber] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -44,6 +46,8 @@ export default function NewTerm() {
       return data || [];
     },
   });
+
+  const filteredEquipment = equipment?.filter(eq => typeFilter === 'all' || eq.type === typeFilter) || [];
 
   const selectedEquipment = equipment?.find(e => e.id === equipmentId);
   const selectedAnalyst = analysts?.find(a => a.id === analystId);
@@ -101,16 +105,34 @@ export default function NewTerm() {
           <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(); }} className="space-y-4">
             <div className="space-y-2">
               <Label>Equipamento</Label>
-              <Select value={equipmentId} onValueChange={setEquipmentId}>
-                <SelectTrigger><SelectValue placeholder="Selecione o equipamento" /></SelectTrigger>
-                <SelectContent>
-                  {equipment?.map(eq => (
-                    <SelectItem key={eq.id} value={eq.id}>
-                      {eq.brand} {eq.model} — SN: {eq.serial_number}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setEquipmentId(''); }}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os tipos</SelectItem>
+                    {EQUIPMENT_TYPES.map(t => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={equipmentId} onValueChange={setEquipmentId}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Selecione o equipamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredEquipment.map(eq => (
+                      <SelectItem key={eq.id} value={eq.id}>
+                        {eq.brand} {eq.model} — SN: {eq.serial_number}
+                      </SelectItem>
+                    ))}
+                    {filteredEquipment.length === 0 && (
+                      <div className="px-2 py-4 text-center text-sm text-muted-foreground">Nenhum equipamento disponível</div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {selectedEquipment && (

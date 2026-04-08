@@ -52,7 +52,7 @@ export function TermPreviewDialog({ termId, onClose }: Props) {
         .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 40px; }
         .sig-block { text-align: center; padding-top: 16px; }
         .sig-line { border-top: 1px solid #333; margin: 0 16px; }
-        .sig-name { font-family: 'Dancing Script', cursive; font-size: 26px; color: #1a1a1a; min-height: 40px; padding: 8px 0; }
+        .sig-name { font-family: 'Dancing Script', cursive; font-size: 20px; color: #1a1a1a; min-height: 36px; padding: 6px 0; }
         .sig-role { font-size: 11px; color: #666; margin-top: 4px; }
         .sig-date { font-size: 10px; color: #999; }
         .sig-empty { color: #ccc; font-style: italic; font-size: 12px; min-height: 40px; display: flex; align-items: center; justify-content: center; }
@@ -173,7 +173,7 @@ export function TermPreviewDialog({ termId, onClose }: Props) {
           <div className="grid grid-cols-2 gap-8 pt-6">
             <div className="text-center">
               {term.collaborator_signature_name ? (
-                <p className="font-signature text-2xl min-h-[48px]">{term.collaborator_signature_name}</p>
+                <p className="font-signature text-xl min-h-[40px]">{term.collaborator_signature_name}</p>
               ) : (
                 <p className="text-gray-300 italic text-sm min-h-[48px] flex items-center justify-center">Pendente</p>
               )}
@@ -183,7 +183,7 @@ export function TermPreviewDialog({ termId, onClose }: Props) {
             </div>
             <div className="text-center">
               {term.analyst_signature_name ? (
-                <p className="font-signature text-2xl min-h-[48px]">{term.analyst_signature_name}</p>
+                <p className="font-signature text-xl min-h-[40px]">{term.analyst_signature_name}</p>
               ) : (
                 <p className="text-gray-300 italic text-sm min-h-[48px] flex items-center justify-center">Pendente</p>
               )}

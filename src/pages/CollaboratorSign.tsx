@@ -159,7 +159,7 @@ export default function CollaboratorSign() {
               {signatureName && (
                 <div className="border rounded-lg p-4 bg-muted text-center">
                   <p className="text-xs text-muted-foreground mb-2">Pré-visualização da assinatura</p>
-                  <p className="font-signature text-3xl">{signatureName}</p>
+                  <p className="font-signature text-xl">{signatureName}</p>
                 </div>
               )}
 
