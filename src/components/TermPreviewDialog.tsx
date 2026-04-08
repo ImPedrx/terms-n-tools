@@ -121,7 +121,10 @@ export function TermPreviewDialog({ termId, onClose }: Props) {
       </body></html>
     `);
     printWindow.document.close();
-    printWindow.print();
+    // Wait for Dancing Script font to load before printing
+    printWindow.onload = () => {
+      setTimeout(() => printWindow.print(), 600);
+    };
   };
 
   return (
