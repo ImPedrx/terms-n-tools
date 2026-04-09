@@ -19,10 +19,9 @@ export const EQUIPMENT_STATUS = [
 ] as const;
 
 export const TERM_STATUS = [
-  { value: 'rascunho', label: 'Rascunho' },
-  { value: 'pendente_colaborador', label: 'Pendente Colaborador' },
-  { value: 'aguardando_analista', label: 'Aguardando Analista' },
-  { value: 'totalmente_assinado', label: 'Totalmente Assinado' },
+  { value: 'pendente', label: 'Pendente' },
+  { value: 'enviado_para_assinatura', label: 'Enviado para Assinatura' },
+  { value: 'fechado', label: 'Fechado' },
   { value: 'cancelado', label: 'Cancelado' },
 ] as const;
 
