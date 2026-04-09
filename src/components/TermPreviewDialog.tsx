@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Printer, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { useSettings } from '@/hooks/useSettings';
-import { t } from '@/lib/i18n';
+import { t, type Language } from '@/lib/i18n';
 
 interface Props {
   termId: string;
