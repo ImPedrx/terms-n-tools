@@ -12,14 +12,6 @@ import { Loader2 } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
 import { EQUIPMENT_TYPES } from '@/lib/constants';
 
-function generateToken() {
-  return crypto.randomUUID().replace(/-/g, '').slice(0, 16);
-}
-
-function generatePassword() {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
-}
-
 export default function NewTerm() {
   const [equipmentId, setEquipmentId] = useState('');
   const [collaboratorName, setCollaboratorName] = useState('');
@@ -48,16 +40,12 @@ export default function NewTerm() {
   });
 
   const filteredEquipment = equipment?.filter(eq => typeFilter === 'all' || eq.type === typeFilter) || [];
-
   const selectedEquipment = equipment?.find(e => e.id === equipmentId);
   const selectedAnalyst = analysts?.find(a => a.id === analystId);
 
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!selectedEquipment || !selectedAnalyst) throw new Error('Dados incompletos');
-      
-      const token = generateToken();
-      const password = generatePassword();
 
       const { data: term, error } = await supabase.from('responsibility_terms').insert({
         equipment_id: selectedEquipment.id,
@@ -68,26 +56,21 @@ export default function NewTerm() {
         analyst_id: selectedAnalyst.id,
         analyst_name: selectedAnalyst.name,
         ticket_number: ticketNumber,
-        status: 'pendente_colaborador',
-        access_token: token,
-        access_password: password,
+        status: 'pendente',
+        access_token: crypto.randomUUID().replace(/-/g, '').slice(0, 16),
+        access_password: 'N/A',
         term_text: settings?.term_text || 'Termo de responsabilidade.',
       }).select().single();
 
       if (error) throw error;
       return term;
     },
-    onSuccess: (term) => {
-      queryClient.invalidateQueries({ queryKey: ['terms'] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['terms-all'] });
       queryClient.invalidateQueries({ queryKey: ['terms-stats'] });
-      const publishedUrl = window.location.origin;
-      const link = `${publishedUrl}/assinar/${term.access_token}`;
-      toast({
-        title: 'Termo criado com sucesso!',
-        description: `Link: ${link} | Senha: ${term.access_password}`,
-        duration: 30000,
-      });
-      navigate('/pendentes');
+      queryClient.invalidateQueries({ queryKey: ['equipment-available'] });
+      toast({ title: 'Termo criado com sucesso!' });
+      navigate('/termos');
     },
     onError: () => toast({ title: 'Erro ao criar termo', variant: 'destructive' }),
   });
@@ -166,7 +149,7 @@ export default function NewTerm() {
 
             <div className="rounded-lg border p-4">
               <Label className="text-xs text-muted-foreground mb-2 block">Texto do Termo</Label>
-              <p className="text-sm">{settings?.term_text || 'Carregando...'}</p>
+              <p className="text-sm whitespace-pre-line">{settings?.term_text || 'Carregando...'}</p>
             </div>
 
             <Button type="submit" className="w-full" disabled={createMutation.isPending || !equipmentId || !analystId || !collaboratorName || !ticketNumber}>

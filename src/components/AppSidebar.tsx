@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Monitor, FileText, Clock, CheckCircle2, Settings
+  LayoutDashboard, Monitor, FileText, FolderOpen, Settings
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
@@ -12,8 +12,7 @@ const items = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Inventário', url: '/inventario', icon: Monitor },
   { title: 'Novo Termo', url: '/termos/novo', icon: FileText },
-  { title: 'Pendentes', url: '/pendentes', icon: Clock },
-  { title: 'Assinados', url: '/assinados', icon: CheckCircle2 },
+  { title: 'Controle de Termos', url: '/termos', icon: FolderOpen },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ];
 

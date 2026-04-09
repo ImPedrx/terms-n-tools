@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Monitor, CheckCircle2, Clock, Wrench, Package, FileText } from 'lucide-react';
+import { Monitor, CheckCircle2, Clock, Wrench, Package, FileText, Send, XCircle } from 'lucide-react';
 
 export default function Dashboard() {
   const { data: equipment } = useQuery({
@@ -28,9 +28,10 @@ export default function Dashboard() {
   };
 
   const termStats = {
-    pendente: terms?.filter(t => t.status === 'pendente_colaborador').length || 0,
-    aguardando: terms?.filter(t => t.status === 'aguardando_analista').length || 0,
-    assinados: terms?.filter(t => t.status === 'totalmente_assinado').length || 0,
+    pendente: terms?.filter(t => t.status === 'pendente').length || 0,
+    enviado: terms?.filter(t => t.status === 'enviado_para_assinatura').length || 0,
+    fechado: terms?.filter(t => t.status === 'fechado').length || 0,
+    cancelado: terms?.filter(t => t.status === 'cancelado').length || 0,
   };
 
   const stats = [
@@ -38,9 +39,10 @@ export default function Dashboard() {
     { label: 'Disponíveis', value: eqStats.disponivel, icon: Package, color: 'text-success' },
     { label: 'Entregues', value: eqStats.entregue, icon: CheckCircle2, color: 'text-primary' },
     { label: 'Em Manutenção', value: eqStats.manutencao, icon: Wrench, color: 'text-warning' },
-    { label: 'Pendentes Colaborador', value: termStats.pendente, icon: Clock, color: 'text-warning' },
-    { label: 'Aguardando Analista', value: termStats.aguardando, icon: FileText, color: 'text-primary' },
-    { label: 'Totalmente Assinados', value: termStats.assinados, icon: CheckCircle2, color: 'text-success' },
+    { label: 'Termos Pendentes', value: termStats.pendente, icon: Clock, color: 'text-warning' },
+    { label: 'Enviados p/ Assinatura', value: termStats.enviado, icon: Send, color: 'text-primary' },
+    { label: 'Termos Fechados', value: termStats.fechado, icon: CheckCircle2, color: 'text-success' },
+    { label: 'Termos Cancelados', value: termStats.cancelado, icon: XCircle, color: 'text-destructive' },
   ];
 
   return (

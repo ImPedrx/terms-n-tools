@@ -9,9 +9,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/Inventory";
 import NewTerm from "./pages/NewTerm";
-import PendingTerms from "./pages/PendingTerms";
-import SignedTerms from "./pages/SignedTerms";
-import CollaboratorSign from "./pages/CollaboratorSign";
+import TermsControl from "./pages/TermsControl";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
@@ -34,12 +32,10 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
 const AppRoutes = () => (
   <Routes>
     <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
-    <Route path="/assinar/:token" element={<CollaboratorSign />} />
     <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
     <Route path="/inventario" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
     <Route path="/termos/novo" element={<ProtectedRoute><NewTerm /></ProtectedRoute>} />
-    <Route path="/pendentes" element={<ProtectedRoute><PendingTerms /></ProtectedRoute>} />
-    <Route path="/assinados" element={<ProtectedRoute><SignedTerms /></ProtectedRoute>} />
+    <Route path="/termos" element={<ProtectedRoute><TermsControl /></ProtectedRoute>} />
     <Route path="/configuracoes" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
