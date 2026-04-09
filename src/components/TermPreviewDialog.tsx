@@ -90,7 +90,7 @@ function buildDocumentHtml(term: any, logoUrl: string, lang: string) {
 
 export function TermPreviewDialog({ termId, onClose }: Props) {
   const { data: settings } = useSettings();
-  const lang = settings?.language || 'pt';
+  const lang = (settings?.language || 'pt') as Language;
   const logoUrl = settings?.company_logo_url || '';
 
   const { data: term } = useQuery({
