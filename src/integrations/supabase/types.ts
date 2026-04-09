@@ -221,10 +221,9 @@ export type Database = {
         | "celular"
         | "outros"
       term_status:
-        | "rascunho"
-        | "pendente_colaborador"
-        | "aguardando_analista"
-        | "totalmente_assinado"
+        | "pendente"
+        | "enviado_para_assinatura"
+        | "fechado"
         | "cancelado"
     }
     CompositeTypes: {
@@ -372,10 +371,9 @@ export const Constants = {
         "outros",
       ],
       term_status: [
-        "rascunho",
-        "pendente_colaborador",
-        "aguardando_analista",
-        "totalmente_assinado",
+        "pendente",
+        "enviado_para_assinatura",
+        "fechado",
         "cancelado",
       ],
     },
