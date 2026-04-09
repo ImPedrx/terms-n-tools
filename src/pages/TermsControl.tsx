@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, Download, Trash2, CheckCircle2, Send, XCircle, Plus, Search } from 'lucide-react';
+import { Eye, Trash2, CheckCircle2, Send, XCircle, Plus, Search, Upload, FileCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { TermPreviewDialog } from '@/components/TermPreviewDialog';
 import { format } from 'date-fns';
@@ -42,6 +42,8 @@ export default function TermsControl() {
   const [deleteTermId, setDeleteTermId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [uploadingTermId, setUploadingTermId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: terms, isLoading } = useQuery({
     queryKey: ['terms-all'],
@@ -62,7 +64,6 @@ export default function TermsControl() {
         .eq('id', termId);
       if (error) throw error;
 
-      // If closing, update equipment status to entregue
       if (newStatus === 'fechado') {
         const term = terms?.find(t => t.id === termId);
         if (term?.equipment_id) {
@@ -82,6 +83,28 @@ export default function TermsControl() {
       toast({ title: 'Status atualizado!' });
     },
     onError: () => toast({ title: 'Erro ao atualizar status', variant: 'destructive' }),
+  });
+
+  const uploadPdfMutation = useMutation({
+    mutationFn: async ({ termId, file }: { termId: string; file: File }) => {
+      const filePath = `${termId}/${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('signed-terms')
+        .upload(filePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { error: updateError } = await supabase
+        .from('responsibility_terms')
+        .update({ signed_pdf_path: filePath } as any)
+        .eq('id', termId);
+      if (updateError) throw updateError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['terms-all'] });
+      toast({ title: 'PDF assinado enviado com sucesso!' });
+      setUploadingTermId(null);
+    },
+    onError: (err: any) => toast({ title: 'Erro ao enviar PDF', description: err.message, variant: 'destructive' }),
   });
 
   const deleteMutation = useMutation({
@@ -109,6 +132,33 @@ export default function TermsControl() {
     onError: () => toast({ title: 'Erro ao excluir', variant: 'destructive' }),
   });
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && uploadingTermId) {
+      uploadPdfMutation.mutate({ termId: uploadingTermId, file });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleUploadClick = (termId: string) => {
+    setUploadingTermId(termId);
+    fileInputRef.current?.click();
+  };
+
+  const handleDownloadSignedPdf = async (path: string) => {
+    const { data, error } = await supabase.storage.from('signed-terms').download(path);
+    if (error || !data) {
+      toast({ title: 'Erro ao baixar PDF', variant: 'destructive' });
+      return;
+    }
+    const url = URL.createObjectURL(data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = path.split('/').pop() || 'termo-assinado.pdf';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const filtered = terms?.filter(t => {
     if (statusFilter !== 'all' && t.status !== statusFilter) return false;
     if (searchQuery) {
@@ -126,6 +176,14 @@ export default function TermsControl() {
 
   return (
     <div className="animate-fade-in">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
       <div className="page-header flex items-center justify-between">
         <div>
           <h1 className="page-title">Controle de Termos</h1>
@@ -169,50 +227,65 @@ export default function TermsControl() {
               <TableHead>Analista</TableHead>
               <TableHead>Data</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>PDF</TableHead>
               <TableHead>Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum termo encontrado</TableCell></TableRow>
-            ) : filtered.map(term => (
-              <TableRow key={term.id}>
-                <TableCell className="font-mono text-sm font-medium">{term.ticket_number}</TableCell>
-                <TableCell>{term.collaborator_name}</TableCell>
-                <TableCell className="text-sm">{term.equipment_description}</TableCell>
-                <TableCell className="font-mono text-xs">{term.serial_number}</TableCell>
-                <TableCell>{term.analyst_name}</TableCell>
-                <TableCell className="text-xs">{format(new Date(term.created_at), 'dd/MM/yyyy')}</TableCell>
-                <TableCell>{statusBadge(term.status)}</TableCell>
-                <TableCell>
-                  <div className="flex gap-1 flex-wrap">
-                    <Button variant="ghost" size="icon" onClick={() => setPreviewTermId(term.id)} title="Visualizar / PDF">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    {term.status === 'pendente' && (
-                      <Button variant="ghost" size="icon" onClick={() => updateStatusMutation.mutate({ termId: term.id, newStatus: 'enviado_para_assinatura' })} title="Marcar como enviado">
-                        <Send className="h-4 w-4 text-primary" />
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum termo encontrado</TableCell></TableRow>
+            ) : filtered.map(term => {
+              const signedPath = (term as any).signed_pdf_path;
+              return (
+                <TableRow key={term.id}>
+                  <TableCell className="font-mono text-sm font-medium">{term.ticket_number}</TableCell>
+                  <TableCell>{term.collaborator_name}</TableCell>
+                  <TableCell className="text-sm">{term.equipment_description}</TableCell>
+                  <TableCell className="font-mono text-xs">{term.serial_number}</TableCell>
+                  <TableCell>{term.analyst_name}</TableCell>
+                  <TableCell className="text-xs">{format(new Date(term.created_at), 'dd/MM/yyyy')}</TableCell>
+                  <TableCell>{statusBadge(term.status)}</TableCell>
+                  <TableCell>
+                    {signedPath ? (
+                      <Button variant="ghost" size="icon" onClick={() => handleDownloadSignedPdf(signedPath)} title="Baixar PDF assinado">
+                        <FileCheck className="h-4 w-4 text-success" />
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="icon" onClick={() => handleUploadClick(term.id)} title="Enviar PDF assinado" disabled={uploadPdfMutation.isPending}>
+                        <Upload className="h-4 w-4 text-muted-foreground" />
                       </Button>
                     )}
-                    {(term.status === 'pendente' || term.status === 'enviado_para_assinatura') && (
-                      <Button variant="ghost" size="icon" onClick={() => updateStatusMutation.mutate({ termId: term.id, newStatus: 'fechado' })} title="Fechar chamado">
-                        <CheckCircle2 className="h-4 w-4 text-success" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1 flex-wrap">
+                      <Button variant="ghost" size="icon" onClick={() => setPreviewTermId(term.id)} title="Visualizar / PDF">
+                        <Eye className="h-4 w-4" />
                       </Button>
-                    )}
-                    {term.status !== 'cancelado' && term.status !== 'fechado' && (
-                      <Button variant="ghost" size="icon" onClick={() => updateStatusMutation.mutate({ termId: term.id, newStatus: 'cancelado' })} title="Cancelar">
-                        <XCircle className="h-4 w-4 text-warning" />
+                      {term.status === 'pendente' && (
+                        <Button variant="ghost" size="icon" onClick={() => updateStatusMutation.mutate({ termId: term.id, newStatus: 'enviado_para_assinatura' })} title="Marcar como enviado">
+                          <Send className="h-4 w-4 text-primary" />
+                        </Button>
+                      )}
+                      {(term.status === 'pendente' || term.status === 'enviado_para_assinatura') && (
+                        <Button variant="ghost" size="icon" onClick={() => updateStatusMutation.mutate({ termId: term.id, newStatus: 'fechado' })} title="Fechar chamado">
+                          <CheckCircle2 className="h-4 w-4 text-success" />
+                        </Button>
+                      )}
+                      {term.status !== 'cancelado' && term.status !== 'fechado' && (
+                        <Button variant="ghost" size="icon" onClick={() => updateStatusMutation.mutate({ termId: term.id, newStatus: 'cancelado' })} title="Cancelar">
+                          <XCircle className="h-4 w-4 text-warning" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" onClick={() => setDeleteTermId(term.id)} title="Excluir" className="text-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-                    )}
-                    <Button variant="ghost" size="icon" onClick={() => setDeleteTermId(term.id)} title="Excluir" className="text-destructive hover:text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>

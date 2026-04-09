@@ -56,9 +56,7 @@ export default function NewTerm() {
         analyst_id: selectedAnalyst.id,
         analyst_name: selectedAnalyst.name,
         ticket_number: ticketNumber,
-        status: 'pendente',
-        access_token: crypto.randomUUID().replace(/-/g, '').slice(0, 16),
-        access_password: 'N/A',
+        status: 'pendente' as const,
         term_text: settings?.term_text || 'Termo de responsabilidade.',
       }).select().single();
 
