@@ -90,15 +90,9 @@ export type Database = {
       }
       responsibility_terms: {
         Row: {
-          access_password: string
-          access_token: string
           analyst_id: string
           analyst_name: string
-          analyst_signature_date: string | null
-          analyst_signature_name: string | null
           collaborator_name: string
-          collaborator_signature_date: string | null
-          collaborator_signature_name: string | null
           created_at: string
           equipment_description: string
           equipment_id: string | null
@@ -107,21 +101,16 @@ export type Database = {
           returned_at: string | null
           returned_by: string | null
           serial_number: string
+          signed_pdf_path: string | null
           status: Database["public"]["Enums"]["term_status"]
           term_text: string
           ticket_number: string
           updated_at: string
         }
         Insert: {
-          access_password: string
-          access_token: string
           analyst_id: string
           analyst_name: string
-          analyst_signature_date?: string | null
-          analyst_signature_name?: string | null
           collaborator_name: string
-          collaborator_signature_date?: string | null
-          collaborator_signature_name?: string | null
           created_at?: string
           equipment_description: string
           equipment_id?: string | null
@@ -130,21 +119,16 @@ export type Database = {
           returned_at?: string | null
           returned_by?: string | null
           serial_number: string
+          signed_pdf_path?: string | null
           status?: Database["public"]["Enums"]["term_status"]
           term_text: string
           ticket_number: string
           updated_at?: string
         }
         Update: {
-          access_password?: string
-          access_token?: string
           analyst_id?: string
           analyst_name?: string
-          analyst_signature_date?: string | null
-          analyst_signature_name?: string | null
           collaborator_name?: string
-          collaborator_signature_date?: string | null
-          collaborator_signature_name?: string | null
           created_at?: string
           equipment_description?: string
           equipment_id?: string | null
@@ -153,6 +137,7 @@ export type Database = {
           returned_at?: string | null
           returned_by?: string | null
           serial_number?: string
+          signed_pdf_path?: string | null
           status?: Database["public"]["Enums"]["term_status"]
           term_text?: string
           ticket_number?: string
