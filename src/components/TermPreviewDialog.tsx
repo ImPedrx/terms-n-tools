@@ -12,7 +12,7 @@ interface Props {
   onClose: () => void;
 }
 
-function buildDocumentHtml(term: any, logoUrl: string, lang: string) {
+function buildDocumentHtml(term: any, logoUrl: string, lang: Language) {
   return `<html><head><title>${t(lang, 'term_title')}</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
