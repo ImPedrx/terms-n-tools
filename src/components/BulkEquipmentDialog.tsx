@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { X, ScanBarcode, Loader2 } from 'lucide-react';
+import { ScanBarcode, CheckCircle2, Loader2 } from 'lucide-react';
 import { EQUIPMENT_TYPES, EQUIPMENT_STATUS } from '@/lib/constants';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -21,55 +21,59 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
+interface RegisteredItem {
+  serial: string;
+  time: string;
+}
+
 export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
   const [type, setType] = useState<EquipmentType>('notebook');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [status, setStatus] = useState<EquipmentStatus>('disponivel');
   const [observations, setObservations] = useState('');
-  const [serials, setSerials] = useState<string[]>([]);
   const [currentSerial, setCurrentSerial] = useState('');
+  const [registered, setRegistered] = useState<RegisteredItem[]>([]);
+  const [saving, setSaving] = useState(false);
   const serialInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const addSerial = useCallback(() => {
-    const trimmed = currentSerial.trim();
-    if (!trimmed) return;
-    if (serials.includes(trimmed)) {
-      toast({ title: 'Serial já adicionado', variant: 'destructive' });
+  const registerSerial = useCallback(async (serial: string) => {
+    const trimmed = serial.trim();
+    if (!trimmed || !brand || !model) return;
+
+    if (registered.some(r => r.serial === trimmed)) {
+      toast({ title: 'Serial já cadastrado nesta sessão', variant: 'destructive' });
+      setCurrentSerial('');
       return;
     }
-    setSerials(prev => [...prev, trimmed]);
-    setCurrentSerial('');
-    setTimeout(() => serialInputRef.current?.focus(), 50);
-  }, [currentSerial, serials, toast]);
 
-  const removeSerial = (s: string) => setSerials(prev => prev.filter(x => x !== s));
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      if (!brand || !model || serials.length === 0) throw new Error('Preencha todos os campos');
-      const rows = serials.map(sn => ({
-        type, brand, model, serial_number: sn, patrimony: 'N/A', status, observations: observations || null,
-      }));
-      const { error } = await supabase.from('equipment').insert(rows);
+    setSaving(true);
+    try {
+      const { error } = await supabase.from('equipment').insert({
+        type, brand, model, serial_number: trimmed, patrimony: 'N/A', status, observations: observations || null,
+      });
       if (error) throw error;
-    },
-    onSuccess: () => {
+
+      setRegistered(prev => [{ serial: trimmed, time: new Date().toLocaleTimeString('pt-BR') }, ...prev]);
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['equipment-stats'] });
-      toast({ title: `${serials.length} equipamentos cadastrados com sucesso!` });
-      resetForm();
-      onOpenChange(false);
-    },
-    onError: (err: any) => toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' }),
-  });
+    } catch (err: any) {
+      toast({ title: 'Erro ao cadastrar', description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+      setCurrentSerial('');
+      setTimeout(() => serialInputRef.current?.focus(), 50);
+    }
+  }, [brand, model, type, status, observations, registered, toast, queryClient]);
 
   const resetForm = () => {
     setType('notebook'); setBrand(''); setModel(''); setStatus('disponivel');
-    setObservations(''); setSerials([]); setCurrentSerial('');
+    setObservations(''); setCurrentSerial(''); setRegistered([]);
   };
+
+  const configReady = brand.trim() !== '' && model.trim() !== '';
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetForm(); onOpenChange(o); }}>
@@ -81,10 +85,10 @@ export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={e => { e.preventDefault(); saveMutation.mutate(); }} className="space-y-4">
+        <div className="space-y-4">
           <div className="rounded-lg border border-dashed border-primary/30 bg-accent/30 p-4 space-y-3">
             <p className="text-sm text-muted-foreground">
-              Defina os dados comuns a todos os equipamentos. Apenas o <strong>Nº de Série</strong> será diferente para cada um. O patrimônio será definido como <strong>N/A</strong>.
+              Defina os dados comuns. Depois é só <strong>bipar o serial</strong> — cada leitura cadastra automaticamente.
             </p>
 
             <div className="grid grid-cols-2 gap-3">
@@ -111,11 +115,11 @@ export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Marca</Label>
-                <Input value={brand} onChange={e => setBrand(e.target.value)} placeholder="Ex: Dell" required />
+                <Input value={brand} onChange={e => setBrand(e.target.value)} placeholder="Ex: Dell" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Modelo</Label>
-                <Input value={model} onChange={e => setModel(e.target.value)} placeholder="Ex: Latitude 5520" required />
+                <Input value={model} onChange={e => setModel(e.target.value)} placeholder="Ex: Latitude 5520" />
               </div>
             </div>
 
@@ -128,46 +132,49 @@ export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <ScanBarcode className="h-4 w-4" />
-              Números de Série
+              Bipar Serial
             </Label>
-            <p className="text-xs text-muted-foreground">
-              Use o leitor de código de barras ou digite manualmente. Pressione <kbd className="px-1 py-0.5 rounded bg-muted text-xs font-mono">Enter</kbd> para adicionar.
-            </p>
-            <div className="flex gap-2">
+            {!configReady && (
+              <p className="text-xs text-warning">Preencha Marca e Modelo antes de bipar.</p>
+            )}
+            <div className="flex gap-2 items-center">
               <Input
                 ref={serialInputRef}
                 value={currentSerial}
                 onChange={e => setCurrentSerial(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSerial(); } }}
-                placeholder="Leia ou digite o serial..."
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    registerSerial(currentSerial);
+                  }
+                }}
+                placeholder={configReady ? 'Bipe ou digite o serial...' : 'Preencha marca e modelo primeiro'}
+                disabled={!configReady || saving}
                 autoFocus
               />
-              <Button type="button" variant="secondary" onClick={addSerial}>Adicionar</Button>
+              {saving && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
             </div>
+          </div>
 
-            {serials.length > 0 && (
+          {registered.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">{registered.length} equipamento{registered.length !== 1 ? 's' : ''} cadastrado{registered.length !== 1 ? 's' : ''}</Label>
+              </div>
               <div className="border rounded-lg p-3 max-h-48 overflow-y-auto">
-                <div className="flex flex-wrap gap-2">
-                  {serials.map((sn, i) => (
-                    <Badge key={sn} variant="secondary" className="font-mono text-xs gap-1 pr-1">
-                      <span className="text-muted-foreground mr-1">{i + 1}.</span>
-                      {sn}
-                      <button type="button" onClick={() => removeSerial(sn)} className="ml-1 hover:text-destructive">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
+                <div className="space-y-1">
+                  {registered.map((r, i) => (
+                    <div key={r.serial} className="flex items-center gap-2 text-sm">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-success flex-shrink-0" />
+                      <span className="font-mono text-xs">{r.serial}</span>
+                      <span className="text-muted-foreground text-xs ml-auto">{r.time}</span>
+                    </div>
                   ))}
                 </div>
               </div>
-            )}
-            <p className="text-xs text-muted-foreground text-right">{serials.length} serial(is) adicionado(s)</p>
-          </div>
-
-          <Button type="submit" className="w-full" disabled={saveMutation.isPending || serials.length === 0 || !brand || !model}>
-            {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Cadastrar {serials.length} Equipamento{serials.length !== 1 ? 's' : ''}
-          </Button>
-        </form>
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
