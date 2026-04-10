@@ -228,6 +228,7 @@ export default function Inventory() {
         </Table>
       </div>
       {returnEquipment && <ReturnEquipmentDialog equipment={returnEquipment} onClose={() => setReturnEquipment(null)} />}
+      <BulkEquipmentDialog open={bulkOpen} onOpenChange={setBulkOpen} />
     </div>
   );
 }
