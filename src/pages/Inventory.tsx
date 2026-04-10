@@ -10,8 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Pencil, Trash2, RotateCcw } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, RotateCcw, ScanBarcode } from 'lucide-react';
 import { ReturnEquipmentDialog } from '@/components/ReturnEquipmentDialog';
+import { BulkEquipmentDialog } from '@/components/BulkEquipmentDialog';
 import { EQUIPMENT_TYPES, EQUIPMENT_STATUS } from '@/lib/constants';
 import type { Database } from '@/integrations/supabase/types';
 
