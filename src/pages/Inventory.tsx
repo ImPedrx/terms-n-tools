@@ -114,10 +114,14 @@ export default function Inventory() {
           <h1 className="page-title">Inventário de Equipamentos</h1>
           <p className="page-description">Gerencie todos os equipamentos de TI</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingId(null); setForm(emptyForm); } }}>
-          <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" />Novo Equipamento</Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkOpen(true)}>
+            <ScanBarcode className="h-4 w-4 mr-2" />Lançamento em Massa
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingId(null); setForm(emptyForm); } }}>
+            <DialogTrigger asChild>
+              <Button><Plus className="h-4 w-4 mr-2" />Novo Equipamento</Button>
+            </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>{editingId ? 'Editar' : 'Novo'} Equipamento</DialogTitle>
