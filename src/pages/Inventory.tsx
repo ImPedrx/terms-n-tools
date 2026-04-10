@@ -41,6 +41,7 @@ export default function Inventory() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<EquipmentForm>(emptyForm);
   const [returnEquipment, setReturnEquipment] = useState<any>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
