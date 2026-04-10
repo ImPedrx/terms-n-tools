@@ -10,8 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Pencil, Trash2, RotateCcw } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, RotateCcw, ScanBarcode } from 'lucide-react';
 import { ReturnEquipmentDialog } from '@/components/ReturnEquipmentDialog';
+import { BulkEquipmentDialog } from '@/components/BulkEquipmentDialog';
 import { EQUIPMENT_TYPES, EQUIPMENT_STATUS } from '@/lib/constants';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -40,6 +41,7 @@ export default function Inventory() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<EquipmentForm>(emptyForm);
   const [returnEquipment, setReturnEquipment] = useState<any>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -112,10 +114,14 @@ export default function Inventory() {
           <h1 className="page-title">Inventário de Equipamentos</h1>
           <p className="page-description">Gerencie todos os equipamentos de TI</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingId(null); setForm(emptyForm); } }}>
-          <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" />Novo Equipamento</Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkOpen(true)}>
+            <ScanBarcode className="h-4 w-4 mr-2" />Lançamento em Massa
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingId(null); setForm(emptyForm); } }}>
+            <DialogTrigger asChild>
+              <Button><Plus className="h-4 w-4 mr-2" />Novo Equipamento</Button>
+            </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>{editingId ? 'Editar' : 'Novo'} Equipamento</DialogTitle>
@@ -154,6 +160,7 @@ export default function Inventory() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -221,6 +228,7 @@ export default function Inventory() {
         </Table>
       </div>
       {returnEquipment && <ReturnEquipmentDialog equipment={returnEquipment} onClose={() => setReturnEquipment(null)} />}
+      <BulkEquipmentDialog open={bulkOpen} onOpenChange={setBulkOpen} />
     </div>
   );
 }
