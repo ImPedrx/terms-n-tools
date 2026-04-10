@@ -1,14 +1,13 @@
-import { useState, useRef, useCallback } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useSettings } from '@/hooks/useSettings';
 import { ScanBarcode, CheckCircle2, Loader2 } from 'lucide-react';
 import { EQUIPMENT_TYPES, EQUIPMENT_STATUS } from '@/lib/constants';
 import type { Database } from '@/integrations/supabase/types';
@@ -38,6 +37,9 @@ export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
   const serialInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: settings } = useSettings();
+
+  const serialLength = settings?.serial_lengths?.[type] || 0;
 
   const registerSerial = useCallback(async (serial: string) => {
     const trimmed = serial.trim();
@@ -68,6 +70,13 @@ export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
     }
   }, [brand, model, type, status, observations, registered, toast, queryClient]);
 
+  // Auto-register when serial reaches the configured length
+  useEffect(() => {
+    if (serialLength > 0 && currentSerial.length >= serialLength && !saving && brand && model) {
+      registerSerial(currentSerial);
+    }
+  }, [currentSerial, serialLength, saving, brand, model, registerSerial]);
+
   const resetForm = () => {
     setType('notebook'); setBrand(''); setModel(''); setStatus('disponivel');
     setObservations(''); setCurrentSerial(''); setRegistered([]);
@@ -88,7 +97,7 @@ export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
         <div className="space-y-4">
           <div className="rounded-lg border border-dashed border-primary/30 bg-accent/30 p-4 space-y-3">
             <p className="text-sm text-muted-foreground">
-              Defina os dados comuns. Depois é só <strong>bipar o serial</strong> — cada leitura cadastra automaticamente.
+              Defina os dados comuns. Ao bipar, o serial será cadastrado automaticamente ao atingir <strong>{serialLength} caracteres</strong> (configurável em Configurações).
             </p>
 
             <div className="grid grid-cols-2 gap-3">
@@ -133,6 +142,11 @@ export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
             <Label className="flex items-center gap-2">
               <ScanBarcode className="h-4 w-4" />
               Bipar Serial
+              {serialLength > 0 && (
+                <span className="text-xs text-muted-foreground font-normal">
+                  ({serialLength} caracteres → cadastro automático)
+                </span>
+              )}
             </Label>
             {!configReady && (
               <p className="text-xs text-warning">Preencha Marca e Modelo antes de bipar.</p>
@@ -148,22 +162,32 @@ export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
                     registerSerial(currentSerial);
                   }
                 }}
-                placeholder={configReady ? 'Bipe ou digite o serial...' : 'Preencha marca e modelo primeiro'}
+                placeholder={configReady ? `Bipe o serial (${serialLength} dígitos)...` : 'Preencha marca e modelo primeiro'}
                 disabled={!configReady || saving}
                 autoFocus
+                maxLength={serialLength > 0 ? serialLength : undefined}
               />
               {saving && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
             </div>
+            {currentSerial.length > 0 && serialLength > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-muted rounded-full h-1.5">
+                  <div
+                    className="bg-primary h-1.5 rounded-full transition-all"
+                    style={{ width: `${Math.min((currentSerial.length / serialLength) * 100, 100)}%` }}
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground">{currentSerial.length}/{serialLength}</span>
+              </div>
+            )}
           </div>
 
           {registered.length > 0 && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">{registered.length} equipamento{registered.length !== 1 ? 's' : ''} cadastrado{registered.length !== 1 ? 's' : ''}</Label>
-              </div>
+              <Label className="text-sm">{registered.length} equipamento{registered.length !== 1 ? 's' : ''} cadastrado{registered.length !== 1 ? 's' : ''}</Label>
               <div className="border rounded-lg p-3 max-h-48 overflow-y-auto">
                 <div className="space-y-1">
-                  {registered.map((r, i) => (
+                  {registered.map((r) => (
                     <div key={r.serial} className="flex items-center gap-2 text-sm">
                       <CheckCircle2 className="h-3.5 w-3.5 text-success flex-shrink-0" />
                       <span className="font-mono text-xs">{r.serial}</span>
