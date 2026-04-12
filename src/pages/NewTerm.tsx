@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Loader2, FileText, Info } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
 import { EQUIPMENT_TYPES } from '@/lib/constants';
 
@@ -46,7 +46,6 @@ export default function NewTerm() {
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!selectedEquipment || !selectedAnalyst) throw new Error('Dados incompletos');
-
       const { data: term, error } = await supabase.from('responsibility_terms').insert({
         equipment_id: selectedEquipment.id,
         equipment_description: `${selectedEquipment.brand} ${selectedEquipment.model} (${selectedEquipment.type})`,
@@ -59,13 +58,11 @@ export default function NewTerm() {
         status: 'pendente' as const,
         term_text: settings?.term_text || 'Termo de responsabilidade.',
       }).select().single();
-
       if (error) throw error;
       return term;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['terms-all'] });
-      queryClient.invalidateQueries({ queryKey: ['terms-stats'] });
       queryClient.invalidateQueries({ queryKey: ['equipment-available'] });
       toast({ title: 'Termo criado com sucesso!' });
       navigate('/termos');
@@ -74,32 +71,38 @@ export default function NewTerm() {
   });
 
   return (
-    <div className="animate-fade-in max-w-2xl mx-auto">
-      <div className="page-header">
-        <h1 className="page-title">Novo Termo de Responsabilidade</h1>
-        <p className="page-description">Preencha os dados para gerar o termo</p>
+    <div className="animate-fade-in max-w-2xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/20">
+          <FileText className="h-5 w-5 text-primary-foreground" />
+        </div>
+        <div>
+          <h1 className="page-title">Novo Termo</h1>
+          <p className="page-description">Preencha os dados para gerar o termo de responsabilidade</p>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader><CardTitle>Dados do Termo</CardTitle></CardHeader>
+      <Card className="shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-bold">Dados do Termo</CardTitle>
+        </CardHeader>
         <CardContent>
-          <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(); }} className="space-y-4">
+          <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(); }} className="space-y-5">
             <div className="space-y-2">
-              <Label>Equipamento</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Equipamento</Label>
               <div className="flex gap-2">
                 <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setEquipmentId(''); }}>
-                  <SelectTrigger className="w-[160px]">
+                  <SelectTrigger className="w-[160px] rounded-xl">
                     <SelectValue placeholder="Tipo" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os tipos</SelectItem>
-                    {EQUIPMENT_TYPES.map(t => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
+                    {EQUIPMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Select value={equipmentId} onValueChange={setEquipmentId}>
-                  <SelectTrigger className="flex-1">
+                  <SelectTrigger className="flex-1 rounded-xl">
                     <SelectValue placeholder="Selecione o equipamento" />
                   </SelectTrigger>
                   <SelectContent>
@@ -117,23 +120,29 @@ export default function NewTerm() {
             </div>
 
             {selectedEquipment && (
-              <div className="rounded-lg bg-muted p-4 text-sm space-y-1">
-                <p><strong>Tipo:</strong> {selectedEquipment.type}</p>
-                <p><strong>Marca/Modelo:</strong> {selectedEquipment.brand} {selectedEquipment.model}</p>
-                <p><strong>Nº Série:</strong> {selectedEquipment.serial_number}</p>
-                <p><strong>Patrimônio:</strong> {selectedEquipment.patrimony || '—'}</p>
+              <div className="rounded-xl bg-accent/50 border border-accent p-4 text-sm space-y-1.5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Info className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-bold text-primary uppercase tracking-wider">Detalhes do equipamento</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <p><span className="font-semibold text-muted-foreground">Tipo:</span> {selectedEquipment.type}</p>
+                  <p><span className="font-semibold text-muted-foreground">Marca:</span> {selectedEquipment.brand} {selectedEquipment.model}</p>
+                  <p><span className="font-semibold text-muted-foreground">Série:</span> {selectedEquipment.serial_number}</p>
+                  <p><span className="font-semibold text-muted-foreground">Patrimônio:</span> {selectedEquipment.patrimony || '—'}</p>
+                </div>
               </div>
             )}
 
             <div className="space-y-2">
-              <Label>Nome do Colaborador</Label>
-              <Input value={collaboratorName} onChange={e => setCollaboratorName(e.target.value)} placeholder="Nome completo do colaborador" required />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome do Colaborador</Label>
+              <Input value={collaboratorName} onChange={e => setCollaboratorName(e.target.value)} placeholder="Nome completo do colaborador" required className="rounded-xl" />
             </div>
 
             <div className="space-y-2">
-              <Label>Analista Responsável</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Analista Responsável</Label>
               <Select value={analystId} onValueChange={setAnalystId}>
-                <SelectTrigger><SelectValue placeholder="Selecione o analista" /></SelectTrigger>
+                <SelectTrigger className="rounded-xl"><SelectValue placeholder="Selecione o analista" /></SelectTrigger>
                 <SelectContent>
                   {analysts?.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                 </SelectContent>
@@ -141,16 +150,16 @@ export default function NewTerm() {
             </div>
 
             <div className="space-y-2">
-              <Label>Número do Chamado</Label>
-              <Input value={ticketNumber} onChange={e => setTicketNumber(e.target.value)} placeholder="Ex: INC-12345" required />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Número do Chamado</Label>
+              <Input value={ticketNumber} onChange={e => setTicketNumber(e.target.value)} placeholder="Ex: INC-12345" required className="rounded-xl" />
             </div>
 
-            <div className="rounded-lg border p-4">
-              <Label className="text-xs text-muted-foreground mb-2 block">Texto do Termo</Label>
-              <p className="text-sm whitespace-pre-line">{settings?.term_text || 'Carregando...'}</p>
+            <div className="rounded-xl border bg-muted/30 p-4">
+              <Label className="text-[10px] text-muted-foreground mb-2 block font-bold uppercase tracking-wider">Texto do Termo</Label>
+              <p className="text-sm whitespace-pre-line text-muted-foreground leading-relaxed">{settings?.term_text || 'Carregando...'}</p>
             </div>
 
-            <Button type="submit" className="w-full" disabled={createMutation.isPending || !equipmentId || !analystId || !collaboratorName || !ticketNumber}>
+            <Button type="submit" className="w-full h-12 rounded-xl font-bold shadow-md shadow-primary/20 text-sm" disabled={createMutation.isPending || !equipmentId || !analystId || !collaboratorName || !ticketNumber}>
               {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Gerar Termo de Responsabilidade
             </Button>
