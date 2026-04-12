@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Dancing+Script:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Dancing+Script:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -30,7 +30,7 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 72% 29%;
+    --success: 152 60% 40%;
     --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 50%;
@@ -42,12 +42,12 @@
 
     --radius: 0.625rem;
 
-    --sidebar-background: 220 25% 12%;
+    --sidebar-background: 220 28% 12%;
     --sidebar-foreground: 220 15% 85%;
     --sidebar-primary: 215 90% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 18%;
-    --sidebar-accent-foreground: 220 15% 90%;
+    --sidebar-accent: 220 22% 18%;
+    --sidebar-accent-foreground: 220 15% 95%;
     --sidebar-border: 220 20% 20%;
     --sidebar-ring: 215 90% 55%;
 
@@ -73,6 +73,8 @@
     --accent-foreground: 215 90% 80%;
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 100%;
+    --success: 152 50% 32%;
+    --success-foreground: 0 0% 100%;
     --border: 222 18% 18%;
     --input: 222 18% 18%;
     --ring: 215 90% 55%;
@@ -103,28 +105,77 @@
 }
 
 @layer components {
-  .stat-card {
-    @apply bg-card rounded-lg border p-6 shadow-sm transition-shadow hover:shadow-md;
-  }
-
+  /* Page structure */
   .page-header {
-    @apply mb-6;
+    @apply mb-8;
   }
 
   .page-title {
-    @apply text-2xl font-bold tracking-tight text-foreground;
+    @apply text-2xl font-extrabold tracking-tight text-foreground;
   }
 
   .page-description {
-    @apply text-sm text-muted-foreground mt-1;
+    @apply text-sm text-muted-foreground mt-1.5;
   }
 
+  /* Professional card styles */
+  .stat-card {
+    @apply bg-card rounded-xl border p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  }
+
+  .stat-card-accent {
+    @apply stat-card border-l-4;
+  }
+
+  /* Signature text */
   .signature-text {
     font-family: var(--font-signature);
   }
 
+  /* Document preview */
   .document-preview {
     @apply bg-card border rounded-lg shadow-sm p-8 max-w-[210mm] mx-auto;
     aspect-ratio: 210 / 297;
+  }
+
+  /* Professional table */
+  .pro-table {
+    @apply bg-card rounded-xl border shadow-sm overflow-hidden;
+  }
+
+  .pro-table thead {
+    @apply bg-muted/50;
+  }
+
+  .pro-table thead th {
+    @apply text-xs font-semibold uppercase tracking-wider text-muted-foreground py-3.5 px-4;
+  }
+
+  .pro-table tbody tr {
+    @apply border-b border-border/50 transition-colors hover:bg-muted/30;
+  }
+
+  .pro-table tbody td {
+    @apply py-3 px-4 text-sm;
+  }
+
+  /* Section headings */
+  .section-label {
+    @apply text-[11px] font-bold text-muted-foreground uppercase tracking-[0.12em] mb-4 flex items-center gap-2;
+  }
+
+  /* Glass morphism header */
+  .glass-header {
+    @apply bg-card/70 backdrop-blur-xl border-b sticky top-0 z-10;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70;
+  }
+
+  /* Badge styles */
+  .status-badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide;
   }
 }
