@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Monitor, CheckCircle2, Clock, Wrench, Package, FileText, Send, XCircle, Download, BarChart3 } from 'lucide-react';
+import { Monitor, CheckCircle2, Clock, Wrench, Package, FileText, Send, XCircle, Download, BarChart3, TrendingUp, AlertTriangle } from 'lucide-react';
 import { EQUIPMENT_TYPES, EQUIPMENT_STATUS } from '@/lib/constants';
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -96,20 +96,9 @@ export default function Dashboard() {
 
   const eqByType = EQUIPMENT_TYPES.map(t => ({
     label: t.label,
+    value: t.value,
     count: allEquipment.filter(e => e.type === t.value).length,
   })).filter(t => t.count > 0);
-
-  const statsCards = [
-    { label: 'Total Equipamentos', value: eqStats.total, icon: Monitor, color: 'text-primary' },
-    { label: 'Disponíveis', value: eqStats.disponivel, icon: Package, color: 'text-success' },
-    { label: 'Entregues', value: eqStats.entregue, icon: CheckCircle2, color: 'text-primary' },
-    { label: 'Em Manutenção', value: eqStats.manutencao, icon: Wrench, color: 'text-warning' },
-    { label: 'Total Termos', value: termStats.total, icon: FileText, color: 'text-primary' },
-    { label: 'Pendentes', value: termStats.pendente, icon: Clock, color: 'text-warning' },
-    { label: 'Enviados p/ Assinatura', value: termStats.enviado, icon: Send, color: 'text-primary' },
-    { label: 'Fechados', value: termStats.fechado, icon: CheckCircle2, color: 'text-success' },
-    { label: 'Cancelados', value: termStats.cancelado, icon: XCircle, color: 'text-destructive' },
-  ];
 
   const statusLabel = (s: string) => EQUIPMENT_STATUS.find(x => x.value === s)?.label || s;
   const typeLabel = (t: string) => EQUIPMENT_TYPES.find(x => x.value === t)?.label || t;
@@ -117,7 +106,97 @@ export default function Dashboard() {
   const exportExcel = () => {
     const wb = XLSX.utils.book_new();
 
-    // Sheet 1 - Equipment
+    // ===== Sheet 1: Resumo Dashboard =====
+    const wsResume = XLSX.utils.aoa_to_sheet([]);
+    // Title
+    XLSX.utils.sheet_add_aoa(wsResume, [['RELATÓRIO DE GESTÃO DE TI']], { origin: 'A1' });
+    XLSX.utils.sheet_add_aoa(wsResume, [[`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`]], { origin: 'A2' });
+    XLSX.utils.sheet_add_aoa(wsResume, [[`Período: ${PERIOD_OPTIONS.find(p => p.value === periodFilter)?.label || 'Todo o período'}`]], { origin: 'A3' });
+
+    // Equipment summary
+    XLSX.utils.sheet_add_aoa(wsResume, [['', '', '', '', '', '']], { origin: 'A4' });
+    XLSX.utils.sheet_add_aoa(wsResume, [['RESUMO DE EQUIPAMENTOS']], { origin: 'A5' });
+    XLSX.utils.sheet_add_aoa(wsResume, [['Métrica', 'Quantidade', '%']], { origin: 'A6' });
+    const eqSummaryData = [
+      ['Total de Equipamentos', eqStats.total, '100%'],
+      ['Disponíveis', eqStats.disponivel, eqStats.total ? `${Math.round((eqStats.disponivel / eqStats.total) * 100)}%` : '0%'],
+      ['Entregues', eqStats.entregue, eqStats.total ? `${Math.round((eqStats.entregue / eqStats.total) * 100)}%` : '0%'],
+      ['Em Manutenção', eqStats.manutencao, eqStats.total ? `${Math.round((eqStats.manutencao / eqStats.total) * 100)}%` : '0%'],
+      ['Reservados', eqStats.reservado, eqStats.total ? `${Math.round((eqStats.reservado / eqStats.total) * 100)}%` : '0%'],
+      ['Baixados', eqStats.baixado, eqStats.total ? `${Math.round((eqStats.baixado / eqStats.total) * 100)}%` : '0%'],
+    ];
+    XLSX.utils.sheet_add_aoa(wsResume, eqSummaryData, { origin: 'A7' });
+
+    // Terms summary
+    XLSX.utils.sheet_add_aoa(wsResume, [['', '', '']], { origin: 'A14' });
+    XLSX.utils.sheet_add_aoa(wsResume, [['RESUMO DE TERMOS']], { origin: 'A15' });
+    XLSX.utils.sheet_add_aoa(wsResume, [['Métrica', 'Quantidade', '%']], { origin: 'A16' });
+    const termSummaryData = [
+      ['Total de Termos', termStats.total, '100%'],
+      ['Pendentes', termStats.pendente, termStats.total ? `${Math.round((termStats.pendente / termStats.total) * 100)}%` : '0%'],
+      ['Enviados p/ Assinatura', termStats.enviado, termStats.total ? `${Math.round((termStats.enviado / termStats.total) * 100)}%` : '0%'],
+      ['Fechados', termStats.fechado, termStats.total ? `${Math.round((termStats.fechado / termStats.total) * 100)}%` : '0%'],
+      ['Cancelados', termStats.cancelado, termStats.total ? `${Math.round((termStats.cancelado / termStats.total) * 100)}%` : '0%'],
+    ];
+    XLSX.utils.sheet_add_aoa(wsResume, termSummaryData, { origin: 'A17' });
+
+    // Equipment by type
+    XLSX.utils.sheet_add_aoa(wsResume, [['', '', '']], { origin: 'A23' });
+    XLSX.utils.sheet_add_aoa(wsResume, [['DISTRIBUIÇÃO POR TIPO']], { origin: 'A24' });
+    XLSX.utils.sheet_add_aoa(wsResume, [['Tipo', 'Quantidade', '%']], { origin: 'A25' });
+    const typeData = eqByType.map(t => [
+      t.label,
+      t.count,
+      allEquipment.length ? `${Math.round((t.count / allEquipment.length) * 100)}%` : '0%',
+    ]);
+    XLSX.utils.sheet_add_aoa(wsResume, typeData, { origin: 'A26' });
+
+    // Column widths
+    wsResume['!cols'] = [{ wch: 28 }, { wch: 14 }, { wch: 10 }];
+
+    // Merge title
+    wsResume['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } },
+      { s: { r: 4, c: 0 }, e: { r: 4, c: 2 } },
+      { s: { r: 14, c: 0 }, e: { r: 14, c: 2 } },
+      { s: { r: 23, c: 0 }, e: { r: 23, c: 2 } },
+    ];
+
+    XLSX.utils.book_append_sheet(wb, wsResume, 'Dashboard');
+
+    // ===== Sheet 2: Gráficos (data for charts) =====
+    const wsCharts = XLSX.utils.aoa_to_sheet([]);
+    // Status chart data
+    XLSX.utils.sheet_add_aoa(wsCharts, [['GRÁFICO: EQUIPAMENTOS POR STATUS']], { origin: 'A1' });
+    XLSX.utils.sheet_add_aoa(wsCharts, [['Status', 'Quantidade']], { origin: 'A2' });
+    const statusChartData = EQUIPMENT_STATUS.map(s => {
+      const count = allEquipment.filter(e => e.status === s.value).length;
+      return [s.label, count];
+    }).filter(row => (row[1] as number) > 0);
+    XLSX.utils.sheet_add_aoa(wsCharts, statusChartData, { origin: 'A3' });
+
+    // Type chart data
+    const typeChartStart = statusChartData.length + 5;
+    XLSX.utils.sheet_add_aoa(wsCharts, [['GRÁFICO: EQUIPAMENTOS POR TIPO']], { origin: `A${typeChartStart}` });
+    XLSX.utils.sheet_add_aoa(wsCharts, [['Tipo', 'Quantidade']], { origin: `A${typeChartStart + 1}` });
+    XLSX.utils.sheet_add_aoa(wsCharts, eqByType.map(t => [t.label, t.count]), { origin: `A${typeChartStart + 2}` });
+
+    // Terms chart data
+    const termsChartStart = typeChartStart + eqByType.length + 4;
+    XLSX.utils.sheet_add_aoa(wsCharts, [['GRÁFICO: TERMOS POR STATUS']], { origin: `A${termsChartStart}` });
+    XLSX.utils.sheet_add_aoa(wsCharts, [['Status', 'Quantidade']], { origin: `A${termsChartStart + 1}` });
+    const termsChartData = [
+      ['Pendentes', termStats.pendente],
+      ['Enviados', termStats.enviado],
+      ['Fechados', termStats.fechado],
+      ['Cancelados', termStats.cancelado],
+    ].filter(row => (row[1] as number) > 0);
+    XLSX.utils.sheet_add_aoa(wsCharts, termsChartData, { origin: `A${termsChartStart + 2}` });
+
+    wsCharts['!cols'] = [{ wch: 24 }, { wch: 14 }];
+    XLSX.utils.book_append_sheet(wb, wsCharts, 'Gráficos');
+
+    // ===== Sheet 3: Equipamentos =====
     const eqRows = filteredEquipment.map(e => ({
       'Tipo': typeLabel(e.type),
       'Marca': e.brand,
@@ -130,10 +209,13 @@ export default function Dashboard() {
       'Cadastrado em': format(new Date(e.created_at), 'dd/MM/yyyy HH:mm'),
     }));
     const wsEq = XLSX.utils.json_to_sheet(eqRows);
-    wsEq['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 22 }, { wch: 14 }, { wch: 14 }, { wch: 20 }, { wch: 30 }, { wch: 18 }];
+    wsEq['!cols'] = [
+      { wch: 14 }, { wch: 14 }, { wch: 20 }, { wch: 24 }, { wch: 14 },
+      { wch: 16 }, { wch: 22 }, { wch: 32 }, { wch: 18 },
+    ];
     XLSX.utils.book_append_sheet(wb, wsEq, 'Equipamentos');
 
-    // Sheet 2 - Terms
+    // ===== Sheet 4: Termos =====
     const termRows = filteredTerms.map(t => ({
       'Chamado': t.ticket_number,
       'Colaborador': t.collaborator_name,
@@ -148,45 +230,49 @@ export default function Dashboard() {
       'PDF Assinado': (t as any).signed_pdf_path ? 'Sim' : 'Não',
     }));
     const wsTerms = XLSX.utils.json_to_sheet(termRows);
-    wsTerms['!cols'] = [{ wch: 14 }, { wch: 22 }, { wch: 30 }, { wch: 22 }, { wch: 14 }, { wch: 16 }, { wch: 20 }, { wch: 18 }, { wch: 12 }];
-    XLSX.utils.book_append_sheet(wb, wsTerms, 'Termos');
-
-    // Sheet 3 - Summary
-    const summaryRows = [
-      { 'Métrica': 'Total Equipamentos', 'Valor': eqStats.total },
-      { 'Métrica': 'Disponíveis', 'Valor': eqStats.disponivel },
-      { 'Métrica': 'Entregues', 'Valor': eqStats.entregue },
-      { 'Métrica': 'Em Manutenção', 'Valor': eqStats.manutencao },
-      { 'Métrica': 'Reservados', 'Valor': eqStats.reservado },
-      { 'Métrica': 'Baixados', 'Valor': eqStats.baixado },
-      { 'Métrica': '', 'Valor': '' },
-      { 'Métrica': 'Total Termos', 'Valor': termStats.total },
-      { 'Métrica': 'Pendentes', 'Valor': termStats.pendente },
-      { 'Métrica': 'Enviados p/ Assinatura', 'Valor': termStats.enviado },
-      { 'Métrica': 'Fechados', 'Valor': termStats.fechado },
-      { 'Métrica': 'Cancelados', 'Valor': termStats.cancelado },
-      { 'Métrica': '', 'Valor': '' },
-      ...eqByType.map(t => ({ 'Métrica': `Equipamentos: ${t.label}`, 'Valor': t.count })),
+    wsTerms['!cols'] = [
+      { wch: 14 }, { wch: 24 }, { wch: 32 }, { wch: 24 }, { wch: 14 },
+      { wch: 18 }, { wch: 22 }, { wch: 18 }, { wch: 14 },
     ];
-    const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
-    wsSummary['!cols'] = [{ wch: 28 }, { wch: 10 }];
-    XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumo');
+    XLSX.utils.book_append_sheet(wb, wsTerms, 'Termos');
 
     const periodLabel = PERIOD_OPTIONS.find(p => p.value === periodFilter)?.label || '';
     const fileName = `Relatorio_TI_${periodLabel.replace(/\s/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
     XLSX.writeFile(wb, fileName);
   };
 
+  const statsCards = [
+    { label: 'Total Equipamentos', value: eqStats.total, icon: Monitor, color: 'text-primary', bg: 'bg-primary/10' },
+    { label: 'Disponíveis', value: eqStats.disponivel, icon: Package, color: 'text-success', bg: 'bg-success/10' },
+    { label: 'Entregues', value: eqStats.entregue, icon: CheckCircle2, color: 'text-primary', bg: 'bg-primary/10' },
+    { label: 'Em Manutenção', value: eqStats.manutencao, icon: Wrench, color: 'text-warning', bg: 'bg-warning/10' },
+    { label: 'Baixados', value: eqStats.baixado, icon: AlertTriangle, color: 'text-destructive', bg: 'bg-destructive/10' },
+  ];
+
+  const termCards = [
+    { label: 'Total Termos', value: termStats.total, icon: FileText, color: 'text-primary', bg: 'bg-primary/10' },
+    { label: 'Pendentes', value: termStats.pendente, icon: Clock, color: 'text-warning', bg: 'bg-warning/10' },
+    { label: 'Enviados p/ Assinatura', value: termStats.enviado, icon: Send, color: 'text-primary', bg: 'bg-primary/10' },
+    { label: 'Fechados', value: termStats.fechado, icon: CheckCircle2, color: 'text-success', bg: 'bg-success/10' },
+    { label: 'Cancelados', value: termStats.cancelado, icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/10' },
+  ];
+
+  const maxTypeCount = Math.max(...eqByType.map(t => t.count), 1);
+
   return (
-    <div className="animate-fade-in">
-      <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="animate-fade-in space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="page-title">Dashboard</h1>
+          <h1 className="page-title flex items-center gap-2">
+            <BarChart3 className="h-6 w-6 text-primary" />
+            Dashboard
+          </h1>
           <p className="page-description">Visão geral do sistema de TI</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Select value={periodFilter} onValueChange={setPeriodFilter}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[180px] h-9 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -194,7 +280,7 @@ export default function Dashboard() {
             </SelectContent>
           </Select>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-[160px] h-9 text-sm">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent>
@@ -202,44 +288,84 @@ export default function Dashboard() {
               {EQUIPMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={exportExcel}>
+          <Button variant="outline" size="sm" onClick={exportExcel} className="h-9">
             <Download className="h-4 w-4 mr-2" /> Exportar Excel
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
-        {statsCards.map((stat) => (
-          <Card key={stat.label} className="stat-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">{stat.label}</CardTitle>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Equipment Stats */}
+      <div>
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+          <Monitor className="h-4 w-4" /> Equipamentos
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {statsCards.map((stat) => (
+            <Card key={stat.label} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${stat.bg}`}>
+                    <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                  </div>
+                </div>
+                <div className="text-2xl font-bold tracking-tight">{stat.value}</div>
+                <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
 
+      {/* Term Stats */}
+      <div>
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+          <FileText className="h-4 w-4" /> Termos de Responsabilidade
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {termCards.map((stat) => (
+            <Card key={stat.label} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${stat.bg}`}>
+                    <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                  </div>
+                </div>
+                <div className="text-2xl font-bold tracking-tight">{stat.value}</div>
+                <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Charts section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Equipment by type */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Equipamentos por Tipo</CardTitle>
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              Distribuição por Tipo
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {eqByType.length === 0 && <p className="text-sm text-muted-foreground">Nenhum equipamento</p>}
+              {eqByType.length === 0 && <p className="text-sm text-muted-foreground">Nenhum equipamento cadastrado</p>}
               {eqByType.map(t => {
                 const pct = allEquipment.length ? Math.round((t.count / allEquipment.length) * 100) : 0;
+                const barWidth = Math.round((t.count / maxTypeCount) * 100);
                 return (
-                  <div key={t.label} className="flex items-center gap-3">
-                    <span className="text-sm w-24 truncate">{t.label}</span>
-                    <div className="flex-1 bg-muted rounded-full h-2.5">
-                      <div className="bg-primary h-2.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                  <div key={t.label} className="group">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">{t.label}</span>
+                      <span className="text-xs text-muted-foreground">{t.count} ({pct}%)</span>
                     </div>
-                    <span className="text-sm font-medium w-12 text-right">{t.count}</span>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-primary to-primary/70 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${barWidth}%` }}
+                      />
+                    </div>
                   </div>
                 );
               })}
@@ -248,9 +374,12 @@ export default function Dashboard() {
         </Card>
 
         {/* Equipment by status */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Equipamentos por Status</CardTitle>
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              Distribuição por Status
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -258,13 +387,16 @@ export default function Dashboard() {
                 const count = allEquipment.filter(e => e.status === s.value).length;
                 if (count === 0) return null;
                 const pct = allEquipment.length ? Math.round((count / allEquipment.length) * 100) : 0;
+                const barWidth = Math.round((count / Math.max(...EQUIPMENT_STATUS.map(st => allEquipment.filter(e => e.status === st.value).length), 1)) * 100);
                 return (
-                  <div key={s.value} className="flex items-center gap-3">
-                    <span className="text-sm w-24 truncate">{s.label}</span>
-                    <div className="flex-1 bg-muted rounded-full h-2.5">
-                      <div className={`${s.color} h-2.5 rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                  <div key={s.value}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">{s.label}</span>
+                      <span className="text-xs text-muted-foreground">{count} ({pct}%)</span>
                     </div>
-                    <span className="text-sm font-medium w-12 text-right">{count}</span>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div className={`${s.color} h-2 rounded-full transition-all duration-500`} style={{ width: `${barWidth}%` }} />
+                    </div>
                   </div>
                 );
               })}
