@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Monitor, CheckCircle2, Clock, Wrench, Package, FileText, Send, XCircle, Download, BarChart3, TrendingUp, AlertTriangle, Activity } from 'lucide-react';
 import { EQUIPMENT_TYPES, EQUIPMENT_STATUS } from '@/lib/constants';
-import { format, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import * as XLSX from 'xlsx';
+import { subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { exportToExcel } from '@/lib/excelExport';
+import { useToast } from '@/hooks/use-toast';
 
 const PERIOD_OPTIONS = [
   { value: 'all', label: 'Todo o período' },
@@ -100,102 +100,18 @@ export default function Dashboard() {
     count: allEquipment.filter(e => e.type === t.value).length,
   })).filter(t => t.count > 0);
 
-  const statusLabel = (s: string) => EQUIPMENT_STATUS.find(x => x.value === s)?.label || s;
-  const typeLabel = (t: string) => EQUIPMENT_TYPES.find(x => x.value === t)?.label || t;
+  const { toast } = useToast();
 
-  const exportExcel = () => {
-    const wb = XLSX.utils.book_new();
-    const wsResume = XLSX.utils.aoa_to_sheet([]);
-    XLSX.utils.sheet_add_aoa(wsResume, [['RELATÓRIO DE GESTÃO DE TI']], { origin: 'A1' });
-    XLSX.utils.sheet_add_aoa(wsResume, [[`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`]], { origin: 'A2' });
-    XLSX.utils.sheet_add_aoa(wsResume, [[`Período: ${PERIOD_OPTIONS.find(p => p.value === periodFilter)?.label || 'Todo o período'}`]], { origin: 'A3' });
-    XLSX.utils.sheet_add_aoa(wsResume, [['', '', '', '', '', '']], { origin: 'A4' });
-    XLSX.utils.sheet_add_aoa(wsResume, [['RESUMO DE EQUIPAMENTOS']], { origin: 'A5' });
-    XLSX.utils.sheet_add_aoa(wsResume, [['Métrica', 'Quantidade', '%']], { origin: 'A6' });
-    const eqSummaryData = [
-      ['Total de Equipamentos', eqStats.total, '100%'],
-      ['Disponíveis', eqStats.disponivel, eqStats.total ? `${Math.round((eqStats.disponivel / eqStats.total) * 100)}%` : '0%'],
-      ['Entregues', eqStats.entregue, eqStats.total ? `${Math.round((eqStats.entregue / eqStats.total) * 100)}%` : '0%'],
-      ['Em Manutenção', eqStats.manutencao, eqStats.total ? `${Math.round((eqStats.manutencao / eqStats.total) * 100)}%` : '0%'],
-      ['Reservados', eqStats.reservado, eqStats.total ? `${Math.round((eqStats.reservado / eqStats.total) * 100)}%` : '0%'],
-      ['Baixados', eqStats.baixado, eqStats.total ? `${Math.round((eqStats.baixado / eqStats.total) * 100)}%` : '0%'],
-    ];
-    XLSX.utils.sheet_add_aoa(wsResume, eqSummaryData, { origin: 'A7' });
-    XLSX.utils.sheet_add_aoa(wsResume, [['', '', '']], { origin: 'A14' });
-    XLSX.utils.sheet_add_aoa(wsResume, [['RESUMO DE TERMOS']], { origin: 'A15' });
-    XLSX.utils.sheet_add_aoa(wsResume, [['Métrica', 'Quantidade', '%']], { origin: 'A16' });
-    const termSummaryData = [
-      ['Total de Termos', termStats.total, '100%'],
-      ['Pendentes', termStats.pendente, termStats.total ? `${Math.round((termStats.pendente / termStats.total) * 100)}%` : '0%'],
-      ['Enviados p/ Assinatura', termStats.enviado, termStats.total ? `${Math.round((termStats.enviado / termStats.total) * 100)}%` : '0%'],
-      ['Fechados', termStats.fechado, termStats.total ? `${Math.round((termStats.fechado / termStats.total) * 100)}%` : '0%'],
-      ['Cancelados', termStats.cancelado, termStats.total ? `${Math.round((termStats.cancelado / termStats.total) * 100)}%` : '0%'],
-    ];
-    XLSX.utils.sheet_add_aoa(wsResume, termSummaryData, { origin: 'A17' });
-    XLSX.utils.sheet_add_aoa(wsResume, [['', '', '']], { origin: 'A23' });
-    XLSX.utils.sheet_add_aoa(wsResume, [['DISTRIBUIÇÃO POR TIPO']], { origin: 'A24' });
-    XLSX.utils.sheet_add_aoa(wsResume, [['Tipo', 'Quantidade', '%']], { origin: 'A25' });
-    const typeData = eqByType.map(t => [t.label, t.count, allEquipment.length ? `${Math.round((t.count / allEquipment.length) * 100)}%` : '0%']);
-    XLSX.utils.sheet_add_aoa(wsResume, typeData, { origin: 'A26' });
-    wsResume['!cols'] = [{ wch: 28 }, { wch: 14 }, { wch: 10 }];
-    wsResume['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } },
-      { s: { r: 4, c: 0 }, e: { r: 4, c: 2 } },
-      { s: { r: 14, c: 0 }, e: { r: 14, c: 2 } },
-      { s: { r: 23, c: 0 }, e: { r: 23, c: 2 } },
-    ];
-    XLSX.utils.book_append_sheet(wb, wsResume, 'Dashboard');
-
-    const wsCharts = XLSX.utils.aoa_to_sheet([]);
-    XLSX.utils.sheet_add_aoa(wsCharts, [['GRÁFICO: EQUIPAMENTOS POR STATUS']], { origin: 'A1' });
-    XLSX.utils.sheet_add_aoa(wsCharts, [['Status', 'Quantidade']], { origin: 'A2' });
-    const statusChartData = EQUIPMENT_STATUS.map(s => {
-      const count = allEquipment.filter(e => e.status === s.value).length;
-      return [s.label, count];
-    }).filter(row => (row[1] as number) > 0);
-    XLSX.utils.sheet_add_aoa(wsCharts, statusChartData, { origin: 'A3' });
-    const typeChartStart = statusChartData.length + 5;
-    XLSX.utils.sheet_add_aoa(wsCharts, [['GRÁFICO: EQUIPAMENTOS POR TIPO']], { origin: `A${typeChartStart}` });
-    XLSX.utils.sheet_add_aoa(wsCharts, [['Tipo', 'Quantidade']], { origin: `A${typeChartStart + 1}` });
-    XLSX.utils.sheet_add_aoa(wsCharts, eqByType.map(t => [t.label, t.count]), { origin: `A${typeChartStart + 2}` });
-    const termsChartStart = typeChartStart + eqByType.length + 4;
-    XLSX.utils.sheet_add_aoa(wsCharts, [['GRÁFICO: TERMOS POR STATUS']], { origin: `A${termsChartStart}` });
-    XLSX.utils.sheet_add_aoa(wsCharts, [['Status', 'Quantidade']], { origin: `A${termsChartStart + 1}` });
-    const termsChartData = [
-      ['Pendentes', termStats.pendente],
-      ['Enviados', termStats.enviado],
-      ['Fechados', termStats.fechado],
-      ['Cancelados', termStats.cancelado],
-    ].filter(row => (row[1] as number) > 0);
-    XLSX.utils.sheet_add_aoa(wsCharts, termsChartData, { origin: `A${termsChartStart + 2}` });
-    wsCharts['!cols'] = [{ wch: 24 }, { wch: 14 }];
-    XLSX.utils.book_append_sheet(wb, wsCharts, 'Gráficos');
-
-    const eqRows = filteredEquipment.map(e => ({
-      'Tipo': typeLabel(e.type), 'Marca': e.brand, 'Modelo': e.model,
-      'Nº Série': e.serial_number, 'Patrimônio': e.patrimony || 'N/A',
-      'Status': statusLabel(e.status), 'Responsável': e.assigned_to || '—',
-      'Observações': e.observations || '',
-      'Cadastrado em': format(new Date(e.created_at), 'dd/MM/yyyy HH:mm'),
-    }));
-    const wsEq = XLSX.utils.json_to_sheet(eqRows);
-    wsEq['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 20 }, { wch: 24 }, { wch: 14 }, { wch: 16 }, { wch: 22 }, { wch: 32 }, { wch: 18 }];
-    XLSX.utils.book_append_sheet(wb, wsEq, 'Equipamentos');
-
-    const termRows = filteredTerms.map(t => ({
-      'Chamado': t.ticket_number, 'Colaborador': t.collaborator_name,
-      'Equipamento': t.equipment_description, 'Nº Série': t.serial_number,
-      'Patrimônio': t.patrimony || 'N/A', 'Analista': t.analyst_name,
-      'Status': t.status === 'pendente' ? 'Pendente' : t.status === 'enviado_para_assinatura' ? 'Enviado p/ Assinatura' : t.status === 'fechado' ? 'Fechado' : 'Cancelado',
-      'Criado em': format(new Date(t.created_at), 'dd/MM/yyyy HH:mm'),
-      'PDF Assinado': (t as any).signed_pdf_path ? 'Sim' : 'Não',
-    }));
-    const wsTerms = XLSX.utils.json_to_sheet(termRows);
-    wsTerms['!cols'] = [{ wch: 14 }, { wch: 24 }, { wch: 32 }, { wch: 24 }, { wch: 14 }, { wch: 18 }, { wch: 22 }, { wch: 18 }, { wch: 14 }];
-    XLSX.utils.book_append_sheet(wb, wsTerms, 'Termos');
-
-    const periodLabel = PERIOD_OPTIONS.find(p => p.value === periodFilter)?.label || '';
-    XLSX.writeFile(wb, `Relatorio_TI_${periodLabel.replace(/\s/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  const exportExcel = async () => {
+    try {
+      await exportToExcel({
+        periodLabel: PERIOD_OPTIONS.find(p => p.value === periodFilter)?.label || 'Todo o período',
+        eqStats, termStats, eqByType, allEquipment, filteredEquipment, filteredTerms,
+      });
+      toast({ title: 'Relatório exportado com sucesso!' });
+    } catch (err: any) {
+      toast({ title: 'Erro ao exportar', description: err?.message, variant: 'destructive' });
+    }
   };
 
   const statsCards = [
