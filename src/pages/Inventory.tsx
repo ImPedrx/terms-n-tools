@@ -9,44 +9,56 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Pencil, Trash2, RotateCcw, ScanBarcode, Monitor, Package } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Plus, Search, Pencil, Trash2, RotateCcw, ScanBarcode, Monitor, Package, History } from 'lucide-react';
 import { ReturnEquipmentDialog } from '@/components/ReturnEquipmentDialog';
 import { BulkEquipmentDialog } from '@/components/BulkEquipmentDialog';
-import { EQUIPMENT_TYPES, EQUIPMENT_STATUS } from '@/lib/constants';
+import { EquipmentTypeSelect } from '@/components/EquipmentTypeSelect';
+import { EQUIPMENT_STATUS } from '@/lib/constants';
+import { formatTypeName } from '@/hooks/useEquipmentTypes';
 import type { Database } from '@/integrations/supabase/types';
 
-type EquipmentType = Database['public']['Enums']['equipment_type'];
 type EquipmentStatus = Database['public']['Enums']['equipment_status'];
 
 interface EquipmentForm {
-  type: EquipmentType;
+  type: string;
   brand: string;
   model: string;
   serial_number: string;
   patrimony: string;
   status: EquipmentStatus;
   observations: string;
+  is_legacy: boolean;
+  legacy_user_name: string;
+  legacy_user_email: string;
+  legacy_delivered_at: string;
 }
 
 const emptyForm: EquipmentForm = {
-  type: 'notebook', brand: '', model: '', serial_number: '', patrimony: '', status: 'disponivel', observations: '',
+  type: 'notebook', brand: '', model: '', serial_number: '', patrimony: '',
+  status: 'disponivel', observations: '',
+  is_legacy: false, legacy_user_name: '', legacy_user_email: '', legacy_delivered_at: '',
 };
 
 export default function Inventory() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
+  const [filterLegacy, setFilterLegacy] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<EquipmentForm>(emptyForm);
   const [returnEquipment, setReturnEquipment] = useState<any>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const { toast } = useToast();
+  const { effectiveClientId } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: equipment, isLoading } = useQuery({
-    queryKey: ['equipment'],
+    queryKey: ['equipment', effectiveClientId],
+    enabled: !!effectiveClientId,
     queryFn: async () => {
       const { data, error } = await supabase.from('equipment').select('*').order('created_at', { ascending: false });
       if (error) throw error;
@@ -56,23 +68,33 @@ export default function Inventory() {
 
   const saveMutation = useMutation({
     mutationFn: async (data: EquipmentForm) => {
+      if (!effectiveClientId) throw new Error('Selecione um cliente');
+      const payload = {
+        type: data.type, brand: data.brand, model: data.model,
+        serial_number: data.serial_number, patrimony: data.patrimony || null,
+        status: data.is_legacy ? ('entregue' as EquipmentStatus) : data.status,
+        observations: data.observations || null,
+        is_legacy: data.is_legacy,
+        legacy_user_name: data.is_legacy ? data.legacy_user_name : null,
+        legacy_user_email: data.is_legacy ? (data.legacy_user_email || null) : null,
+        legacy_delivered_at: data.is_legacy && data.legacy_delivered_at ? data.legacy_delivered_at : null,
+        assigned_to: data.is_legacy ? data.legacy_user_name : undefined,
+      };
       if (editingId) {
-        const { error } = await supabase.from('equipment').update(data).eq('id', editingId);
+        const { error } = await supabase.from('equipment').update(payload).eq('id', editingId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('equipment').insert(data);
+        const { error } = await supabase.from('equipment').insert({ ...payload, client_id: effectiveClientId });
         if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['equipment-stats'] });
-      setDialogOpen(false);
-      setEditingId(null);
-      setForm(emptyForm);
+      setDialogOpen(false); setEditingId(null); setForm(emptyForm);
       toast({ title: editingId ? 'Equipamento atualizado' : 'Equipamento cadastrado' });
     },
-    onError: () => toast({ title: 'Erro ao salvar', variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' }),
   });
 
   const deleteMutation = useMutation({
@@ -87,29 +109,36 @@ export default function Inventory() {
     },
   });
 
-  const filtered = equipment?.filter(e => {
+  const filtered = equipment?.filter((e: any) => {
     const matchSearch = search === '' ||
       e.brand.toLowerCase().includes(search.toLowerCase()) ||
       e.model.toLowerCase().includes(search.toLowerCase()) ||
       e.serial_number.toLowerCase().includes(search.toLowerCase()) ||
-      (e.patrimony || '').toLowerCase().includes(search.toLowerCase());
+      (e.patrimony || '').toLowerCase().includes(search.toLowerCase()) ||
+      (e.legacy_user_name || '').toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'all' || e.status === filterStatus;
     const matchType = filterType === 'all' || e.type === filterType;
-    return matchSearch && matchStatus && matchType;
+    const matchLegacy = filterLegacy === 'all' || (filterLegacy === 'legacy' ? e.is_legacy : !e.is_legacy);
+    return matchSearch && matchStatus && matchType && matchLegacy;
   });
 
-  const openEdit = (eq: NonNullable<typeof equipment>[0]) => {
+  const openEdit = (eq: any) => {
     setEditingId(eq.id);
-    setForm({ type: eq.type, brand: eq.brand, model: eq.model, serial_number: eq.serial_number, patrimony: eq.patrimony || '', status: eq.status, observations: eq.observations || '' });
+    setForm({
+      type: eq.type, brand: eq.brand, model: eq.model, serial_number: eq.serial_number,
+      patrimony: eq.patrimony || '', status: eq.status, observations: eq.observations || '',
+      is_legacy: !!eq.is_legacy,
+      legacy_user_name: eq.legacy_user_name || '',
+      legacy_user_email: eq.legacy_user_email || '',
+      legacy_delivered_at: eq.legacy_delivered_at || '',
+    });
     setDialogOpen(true);
   };
 
   const statusLabel = (s: string) => EQUIPMENT_STATUS.find(x => x.value === s);
-  const typeLabel = (t: string) => EQUIPMENT_TYPES.find(x => x.value === t)?.label || t;
 
   return (
     <div className="animate-fade-in space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/20">
@@ -130,7 +159,7 @@ export default function Inventory() {
                 <Plus className="h-4 w-4" />Novo Equipamento
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-lg font-bold">{editingId ? 'Editar' : 'Novo'} Equipamento</DialogTitle>
               </DialogHeader>
@@ -138,21 +167,21 @@ export default function Inventory() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tipo</Label>
-                    <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as EquipmentType })}>
-                      <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {EQUIPMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <EquipmentTypeSelect value={form.type} onChange={(v) => setForm({ ...form, type: v })} />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</Label>
-                    <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as EquipmentStatus })}>
+                    <Select
+                      value={form.status}
+                      onValueChange={(v) => setForm({ ...form, status: v as EquipmentStatus })}
+                      disabled={form.is_legacy}
+                    >
                       <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {EQUIPMENT_STATUS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    {form.is_legacy && <p className="text-[10px] text-muted-foreground">Forçado a "Entregue" em equipamento legado.</p>}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -163,6 +192,34 @@ export default function Inventory() {
                   <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nº de Série</Label><Input value={form.serial_number} onChange={e => setForm({ ...form, serial_number: e.target.value })} required className="rounded-xl" /></div>
                   <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Patrimônio</Label><Input value={form.patrimony} onChange={e => setForm({ ...form, patrimony: e.target.value })} className="rounded-xl" /></div>
                 </div>
+
+                {/* Legacy toggle */}
+                <div className="rounded-xl border bg-muted/30 p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Equipamento já entregue (legado)</Label>
+                      <p className="text-[10px] text-muted-foreground">Marca como já em uso por um colaborador, sem termo gerado.</p>
+                    </div>
+                    <Switch checked={form.is_legacy} onCheckedChange={(v) => setForm({ ...form, is_legacy: v })} />
+                  </div>
+                  {form.is_legacy && (
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="space-y-1 col-span-2">
+                        <Label className="text-[11px]">Nome do usuário atual *</Label>
+                        <Input required value={form.legacy_user_name} onChange={e => setForm({ ...form, legacy_user_name: e.target.value })} className="h-9 rounded-lg" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">E-mail (opcional)</Label>
+                        <Input type="email" value={form.legacy_user_email} onChange={e => setForm({ ...form, legacy_user_email: e.target.value })} className="h-9 rounded-lg" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">Data de entrega *</Label>
+                        <Input type="date" required value={form.legacy_delivered_at} onChange={e => setForm({ ...form, legacy_delivered_at: e.target.value })} className="h-9 rounded-lg" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Observações</Label><Textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="rounded-xl" /></div>
                 <Button type="submit" className="w-full h-11 rounded-xl font-bold" disabled={saveMutation.isPending}>Salvar Equipamento</Button>
               </form>
@@ -172,18 +229,14 @@ export default function Inventory() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
-          <Input placeholder="Pesquisar por marca, modelo, serial..." className="pl-10 h-10 rounded-xl bg-card" value={search} onChange={e => setSearch(e.target.value)} />
+          <Input placeholder="Pesquisar por marca, modelo, serial, usuário..." className="pl-10 h-10 rounded-xl bg-card" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-[160px] h-10 rounded-xl bg-card"><SelectValue placeholder="Tipo" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os tipos</SelectItem>
-            {EQUIPMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <div className="w-[160px]">
+          <EquipmentTypeSelect value={filterType} onChange={setFilterType} includeAll className="w-[160px] h-10 rounded-xl bg-card" placeholder="Tipo" />
+        </div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-[160px] h-10 rounded-xl bg-card"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
@@ -191,16 +244,20 @@ export default function Inventory() {
             {EQUIPMENT_STATUS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={filterLegacy} onValueChange={setFilterLegacy}>
+          <SelectTrigger className="w-[160px] h-10 rounded-xl bg-card"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="legacy">Apenas Legados</SelectItem>
+            <SelectItem value="normal">Sem Legados</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Counter */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground font-medium">
-          {filtered?.length || 0} equipamento{(filtered?.length || 0) !== 1 ? 's' : ''} encontrado{(filtered?.length || 0) !== 1 ? 's' : ''}
-        </p>
-      </div>
+      <p className="text-xs text-muted-foreground font-medium">
+        {filtered?.length || 0} equipamento{(filtered?.length || 0) !== 1 ? 's' : ''} encontrado{(filtered?.length || 0) !== 1 ? 's' : ''}
+      </p>
 
-      {/* Table */}
       <div className="pro-table">
         <Table>
           <TableHeader>
@@ -227,28 +284,38 @@ export default function Inventory() {
                 <div className="flex flex-col items-center gap-2">
                   <Monitor className="h-10 w-10 text-muted-foreground/20" />
                   <span className="text-sm font-medium">Nenhum equipamento encontrado</span>
-                  <span className="text-xs">Tente ajustar os filtros ou cadastre um novo</span>
                 </div>
               </TableCell></TableRow>
-            ) : filtered?.map((eq, i) => {
+            ) : filtered?.map((eq: any, i: number) => {
               const st = statusLabel(eq.status);
               return (
                 <TableRow key={eq.id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'}>
-                  <TableCell className="font-medium text-sm">{typeLabel(eq.type)}</TableCell>
+                  <TableCell className="font-medium text-sm">{formatTypeName(eq.type)}</TableCell>
                   <TableCell>
-                    <div>
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-sm">{eq.brand}</span>
-                      <span className="text-muted-foreground text-sm"> {eq.model}</span>
+                      <span className="text-muted-foreground text-sm">{eq.model}</span>
+                      {eq.is_legacy && (
+                        <Badge variant="outline" className="text-[9px] font-bold uppercase border-warning/40 text-warning">
+                          <History className="h-2.5 w-2.5 mr-0.5" />Legado
+                        </Badge>
+                      )}
                     </div>
+                    {eq.is_legacy && eq.legacy_user_name && (
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        Entrega anterior: <strong>{eq.legacy_user_name}</strong>
+                        {eq.legacy_delivered_at && ` em ${new Date(eq.legacy_delivered_at).toLocaleDateString('pt-BR')}`}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell><code className="text-xs bg-muted px-2 py-1 rounded-md font-mono">{eq.serial_number}</code></TableCell>
                   <TableCell className="text-sm text-muted-foreground">{eq.patrimony || '—'}</TableCell>
                   <TableCell><Badge variant="secondary" className={`${st?.color} text-primary-foreground text-[11px] font-semibold`}>{st?.label}</Badge></TableCell>
-                  <TableCell className="text-sm">{eq.assigned_to || <span className="text-muted-foreground">—</span>}</TableCell>
+                  <TableCell className="text-sm">{eq.assigned_to || eq.legacy_user_name || <span className="text-muted-foreground">—</span>}</TableCell>
                   <TableCell>
                     <div className="flex gap-0.5">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(eq)} className="h-8 w-8 rounded-lg hover:bg-primary/10"><Pencil className="h-3.5 w-3.5" /></Button>
-                      {eq.status === 'entregue' && (
+                      {eq.status === 'entregue' && !eq.is_legacy && (
                         <Button variant="ghost" size="icon" onClick={() => setReturnEquipment(eq)} title="Devolver" className="h-8 w-8 rounded-lg hover:bg-warning/10"><RotateCcw className="h-3.5 w-3.5 text-warning" /></Button>
                       )}
                       <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(eq.id)} className="h-8 w-8 rounded-lg hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
