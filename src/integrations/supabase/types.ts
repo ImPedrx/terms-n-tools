@@ -16,63 +16,22 @@ export type Database = {
     Tables: {
       analysts: {
         Row: {
-          client_id: string
           created_at: string
           id: string
           name: string
           user_id: string | null
         }
         Insert: {
-          client_id: string
           created_at?: string
           id?: string
           name: string
           user_id?: string | null
         }
         Update: {
-          client_id?: string
           created_at?: string
           id?: string
           name?: string
           user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "analysts_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      clients: {
-        Row: {
-          created_at: string
-          id: string
-          is_active: boolean
-          logo_url: string | null
-          name: string
-          primary_color: string
-          watermark_text: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          logo_url?: string | null
-          name: string
-          primary_color?: string
-          watermark_text?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          logo_url?: string | null
-          name?: string
-          primary_color?: string
-          watermark_text?: string | null
         }
         Relationships: []
       }
@@ -81,67 +40,45 @@ export type Database = {
           assigned_term_id: string | null
           assigned_to: string | null
           brand: string
-          client_id: string
           created_at: string
           id: string
-          is_legacy: boolean
-          legacy_delivered_at: string | null
-          legacy_user_email: string | null
-          legacy_user_name: string | null
           model: string
           observations: string | null
           patrimony: string | null
           serial_number: string
           status: Database["public"]["Enums"]["equipment_status"]
-          type: string
+          type: Database["public"]["Enums"]["equipment_type"]
           updated_at: string
         }
         Insert: {
           assigned_term_id?: string | null
           assigned_to?: string | null
           brand: string
-          client_id: string
           created_at?: string
           id?: string
-          is_legacy?: boolean
-          legacy_delivered_at?: string | null
-          legacy_user_email?: string | null
-          legacy_user_name?: string | null
           model: string
           observations?: string | null
           patrimony?: string | null
           serial_number: string
           status?: Database["public"]["Enums"]["equipment_status"]
-          type: string
+          type: Database["public"]["Enums"]["equipment_type"]
           updated_at?: string
         }
         Update: {
           assigned_term_id?: string | null
           assigned_to?: string | null
           brand?: string
-          client_id?: string
           created_at?: string
           id?: string
-          is_legacy?: boolean
-          legacy_delivered_at?: string | null
-          legacy_user_email?: string | null
-          legacy_user_name?: string | null
           model?: string
           observations?: string | null
           patrimony?: string | null
           serial_number?: string
           status?: Database["public"]["Enums"]["equipment_status"]
-          type?: string
+          type?: Database["public"]["Enums"]["equipment_type"]
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "equipment_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "fk_equipment_term"
             columns: ["assigned_term_id"]
@@ -151,40 +88,10 @@ export type Database = {
           },
         ]
       }
-      equipment_types: {
-        Row: {
-          client_id: string
-          created_at: string
-          id: string
-          name: string
-        }
-        Insert: {
-          client_id: string
-          created_at?: string
-          id?: string
-          name: string
-        }
-        Update: {
-          client_id?: string
-          created_at?: string
-          id?: string
-          name?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "equipment_types_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       responsibility_terms: {
         Row: {
           analyst_id: string
           analyst_name: string
-          client_id: string
           collaborator_name: string
           created_at: string
           equipment_description: string
@@ -194,6 +101,7 @@ export type Database = {
           returned_at: string | null
           returned_by: string | null
           serial_number: string
+          signed_pdf_path: string | null
           status: Database["public"]["Enums"]["term_status"]
           term_text: string
           ticket_number: string
@@ -202,7 +110,6 @@ export type Database = {
         Insert: {
           analyst_id: string
           analyst_name: string
-          client_id: string
           collaborator_name: string
           created_at?: string
           equipment_description: string
@@ -212,6 +119,7 @@ export type Database = {
           returned_at?: string | null
           returned_by?: string | null
           serial_number: string
+          signed_pdf_path?: string | null
           status?: Database["public"]["Enums"]["term_status"]
           term_text: string
           ticket_number: string
@@ -220,7 +128,6 @@ export type Database = {
         Update: {
           analyst_id?: string
           analyst_name?: string
-          client_id?: string
           collaborator_name?: string
           created_at?: string
           equipment_description?: string
@@ -230,6 +137,7 @@ export type Database = {
           returned_at?: string | null
           returned_by?: string | null
           serial_number?: string
+          signed_pdf_path?: string | null
           status?: Database["public"]["Enums"]["term_status"]
           term_text?: string
           ticket_number?: string
@@ -244,13 +152,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "responsibility_terms_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "responsibility_terms_equipment_id_fkey"
             columns: ["equipment_id"]
             isOneToOne: false
@@ -261,75 +162,31 @@ export type Database = {
       }
       system_settings: {
         Row: {
-          client_id: string
           id: string
           key: string
           updated_at: string
           value: string
         }
         Insert: {
-          client_id: string
           id?: string
           key: string
           updated_at?: string
           value: string
         }
         Update: {
-          client_id?: string
           id?: string
           key?: string
           updated_at?: string
           value?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "system_settings_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_profiles: {
-        Row: {
-          client_id: string | null
-          created_at: string
-          full_name: string | null
-          id: string
-          role: string
-        }
-        Insert: {
-          client_id?: string | null
-          created_at?: string
-          full_name?: string | null
-          id: string
-          role: string
-        }
-        Update: {
-          client_id?: string | null
-          created_at?: string
-          full_name?: string | null
-          id?: string
-          role?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_profiles_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      current_client_id: { Args: { _uid: string }; Returns: string }
-      is_auksys_admin: { Args: { _uid: string }; Returns: boolean }
+      [_ in never]: never
     }
     Enums: {
       equipment_status:

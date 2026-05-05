@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import type { Language } from '@/lib/i18n';
 
-export interface SerialLengths { [key: string]: number; }
+export interface SerialLengths {
+  [key: string]: number;
+}
 
 export interface SystemSettings {
   term_text: string;
@@ -18,22 +19,17 @@ const DEFAULT_SERIAL_LENGTHS: SerialLengths = {
 };
 
 export function useSettings() {
-  const { effectiveClientId } = useAuth();
   return useQuery({
-    queryKey: ['system-settings', effectiveClientId],
-    enabled: !!effectiveClientId,
+    queryKey: ['system-settings'],
     queryFn: async (): Promise<SystemSettings> => {
-      const { data } = await supabase
-        .from('system_settings')
-        .select('key, value')
-        .eq('client_id', effectiveClientId!);
+      const { data } = await supabase.from('system_settings').select('key, value');
       const map: Record<string, string> = {};
-      data?.forEach((r) => { map[r.key] = r.value; });
+      data?.forEach((r: { key: string; value: string }) => { map[r.key] = r.value; });
 
       let serial_lengths = DEFAULT_SERIAL_LENGTHS;
       try {
         if (map.serial_lengths) serial_lengths = { ...DEFAULT_SERIAL_LENGTHS, ...JSON.parse(map.serial_lengths) };
-      } catch { /* ignore */ }
+      } catch {}
 
       return {
         term_text: map.term_text || '',
