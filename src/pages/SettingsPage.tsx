@@ -9,12 +9,15 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useSettings, type SerialLengths } from '@/hooks/useSettings';
-import { Settings, Loader2, Image, Trash2, ScanBarcode, Globe, FileText, Cog } from 'lucide-react';
-import { EQUIPMENT_TYPES } from '@/lib/constants';
+import { useAuth } from '@/contexts/AuthContext';
+import { useEquipmentTypes, formatTypeName } from '@/hooks/useEquipmentTypes';
+import { Loader2, Image, Trash2, ScanBarcode, Globe, FileText, Cog } from 'lucide-react';
 import type { Language } from '@/lib/i18n';
 
 export default function SettingsPage() {
   const { data: settings, isLoading } = useSettings();
+  const { data: types } = useEquipmentTypes();
+  const { effectiveClientId } = useAuth();
   const [termText, setTermText] = useState('');
   const [language, setLanguage] = useState<Language>('pt');
   const [logoUrl, setLogoUrl] = useState('');
@@ -34,13 +37,17 @@ export default function SettingsPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (entries: { key: string; value: string }[]) => {
+      if (!effectiveClientId) throw new Error('Selecione um cliente');
       for (const entry of entries) {
-        const { data: existing } = await supabase.from('system_settings').select('id').eq('key', entry.key).maybeSingle();
+        const { data: existing } = await supabase.from('system_settings')
+          .select('id').eq('key', entry.key).eq('client_id', effectiveClientId).maybeSingle();
         if (existing) {
-          const { error } = await supabase.from('system_settings').update({ value: entry.value }).eq('key', entry.key);
+          const { error } = await supabase.from('system_settings').update({ value: entry.value }).eq('id', existing.id);
           if (error) throw error;
         } else {
-          const { error } = await supabase.from('system_settings').insert({ key: entry.key, value: entry.value });
+          const { error } = await supabase.from('system_settings').insert({
+            key: entry.key, value: entry.value, client_id: effectiveClientId,
+          });
           if (error) throw error;
         }
       }
@@ -49,7 +56,7 @@ export default function SettingsPage() {
       queryClient.invalidateQueries({ queryKey: ['system-settings'] });
       toast({ title: 'Configurações salvas!' });
     },
-    onError: () => toast({ title: 'Erro ao salvar', variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' }),
   });
 
   const handleSave = () => {
@@ -63,11 +70,11 @@ export default function SettingsPage() {
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !effectiveClientId) return;
     setUploading(true);
     try {
       const ext = file.name.split('.').pop();
-      const path = `logo.${ext}`;
+      const path = `${effectiveClientId}/logo.${ext}`;
       await supabase.storage.from('company-assets').remove([path]);
       const { error } = await supabase.storage.from('company-assets').upload(path, file, { upsert: true });
       if (error) throw error;
@@ -96,30 +103,28 @@ export default function SettingsPage() {
 
   return (
     <div className="animate-fade-in max-w-2xl mx-auto space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/20">
           <Cog className="h-5 w-5 text-primary-foreground" />
         </div>
         <div>
           <h1 className="page-title">Configurações</h1>
-          <p className="page-description">Personalize o sistema e os documentos</p>
+          <p className="page-description">Personalize o sistema e os documentos do cliente</p>
         </div>
       </div>
 
       <div className="space-y-5">
-        {/* Logo */}
         <Card className="shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center"><Image className="h-3.5 w-3.5 text-primary" /></div>
-              Logo da Empresa
+              Logo do Cliente (no termo)
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {logoUrl && (
               <div className="flex items-center gap-4 p-3 rounded-xl bg-muted/40 border">
-                <img src={logoUrl} alt="Logo da empresa" className="h-14 max-w-[180px] object-contain" />
+                <img src={logoUrl} alt="Logo" className="h-14 max-w-[180px] object-contain" />
                 <Button variant="ghost" size="icon" onClick={handleRemoveLogo} className="h-8 w-8 rounded-lg hover:bg-destructive/10"><Trash2 className="h-4 w-4 text-destructive" /></Button>
               </div>
             )}
@@ -127,12 +132,11 @@ export default function SettingsPage() {
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Enviar nova logo</Label>
               <Input type="file" accept="image/*" onChange={handleLogoUpload} disabled={uploading} className="rounded-xl" />
               {uploading && <div className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin text-primary" /><span className="text-xs text-muted-foreground">Enviando...</span></div>}
-              <p className="text-[11px] text-muted-foreground">PNG com fundo transparente, máximo 400x120px</p>
+              <p className="text-[11px] text-muted-foreground">PNG transparente, ~400x120px.</p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Serial lengths */}
         <Card className="shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -142,20 +146,19 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Defina quantos caracteres o serial tem para cada tipo de equipamento. No lançamento em massa, ao atingir esse número o equipamento é cadastrado automaticamente.
+              Defina quantos caracteres o serial tem para cada tipo. No lançamento em massa, ao atingir o número o equipamento é cadastrado automaticamente.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {EQUIPMENT_TYPES.map(t => (
-                <div key={t.value} className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold text-muted-foreground">{t.label}</Label>
-                  <Input type="number" min={1} max={100} value={serialLengths[t.value] || ''} onChange={e => updateSerialLength(t.value, parseInt(e.target.value) || 1)} className="h-9 rounded-xl text-center font-mono font-bold" />
+              {types?.map(t => (
+                <div key={t.id} className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold text-muted-foreground">{formatTypeName(t.name)}</Label>
+                  <Input type="number" min={1} max={100} value={serialLengths[t.name] || ''} onChange={e => updateSerialLength(t.name, parseInt(e.target.value) || 1)} className="h-9 rounded-xl text-center font-mono font-bold" />
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Language */}
         <Card className="shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -175,7 +178,6 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Term text */}
         <Card className="shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -184,8 +186,8 @@ export default function SettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Textarea value={termText} onChange={(e) => setTermText(e.target.value)} rows={8} placeholder="Texto do termo de responsabilidade..." className="rounded-xl" />
-            <p className="text-[11px] text-muted-foreground">Este texto será usado em todos os novos termos gerados.</p>
+            <Textarea value={termText} onChange={(e) => setTermText(e.target.value)} rows={8} placeholder="Texto do termo..." className="rounded-xl" />
+            <p className="text-[11px] text-muted-foreground">Este texto será usado em todos os novos termos do cliente atual.</p>
           </CardContent>
         </Card>
 
