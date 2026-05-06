@@ -23,6 +23,7 @@ const PERIOD_OPTIONS = [
 export default function Dashboard() {
   const [periodFilter, setPeriodFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  const { data: equipmentTypes = [] } = useEquipmentTypes();
 
   const { data: equipment } = useQuery({
     queryKey: ['equipment-full'],
@@ -95,10 +96,10 @@ export default function Dashboard() {
     cancelado: filteredTerms.filter(t => t.status === 'cancelado').length,
   };
 
-  const eqByType = EQUIPMENT_TYPES.map(t => ({
-    label: t.label,
-    value: t.value,
-    count: allEquipment.filter(e => e.type === t.value).length,
+  const eqByType = equipmentTypes.map(t => ({
+    label: t.name,
+    value: t.name,
+    count: allEquipment.filter(e => e.type === t.name).length,
   })).filter(t => t.count > 0);
 
   const { toast } = useToast();
@@ -163,7 +164,7 @@ export default function Dashboard() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os tipos</SelectItem>
-              {EQUIPMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              {equipmentTypes.map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Button variant="outline" onClick={exportExcel} className="h-10 rounded-xl gap-2 font-semibold">

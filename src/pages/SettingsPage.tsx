@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useSettings, type SerialLengths } from '@/hooks/useSettings';
 import { Settings, Loader2, Image, Trash2, ScanBarcode, Globe, FileText, Cog } from 'lucide-react';
-import { EQUIPMENT_TYPES } from '@/lib/constants';
+import { useEquipmentTypes, useDeleteEquipmentType } from '@/hooks/useEquipmentTypes';
+import { AddEquipmentTypeDialog } from '@/components/AddEquipmentTypeDialog';
 import type { Language } from '@/lib/i18n';
 
 export default function SettingsPage() {
