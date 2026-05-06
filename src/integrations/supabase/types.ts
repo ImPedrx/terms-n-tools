@@ -23,7 +23,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
-          client_id: string
+          client_id?: string
           created_at?: string
           id?: string
           name: string
@@ -100,7 +100,7 @@ export type Database = {
           assigned_term_id?: string | null
           assigned_to?: string | null
           brand: string
-          client_id: string
+          client_id?: string
           created_at?: string
           id?: string
           is_legacy?: boolean
@@ -159,7 +159,7 @@ export type Database = {
           name: string
         }
         Insert: {
-          client_id: string
+          client_id?: string
           created_at?: string
           id?: string
           name: string
@@ -202,7 +202,7 @@ export type Database = {
         Insert: {
           analyst_id: string
           analyst_name: string
-          client_id: string
+          client_id?: string
           collaborator_name: string
           created_at?: string
           equipment_description: string
@@ -268,7 +268,7 @@ export type Database = {
           value: string
         }
         Insert: {
-          client_id: string
+          client_id?: string
           id?: string
           key: string
           updated_at?: string
