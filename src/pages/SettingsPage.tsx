@@ -212,6 +212,8 @@ export default function SettingsPage() {
           Salvar Configurações
         </Button>
       </div>
+
+      <AddEquipmentTypeDialog open={addTypeOpen} onOpenChange={setAddTypeOpen} />
     </div>
   );
 }
