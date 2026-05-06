@@ -38,8 +38,8 @@ export default function Login() {
           <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-xl shadow-primary/25 ring-4 ring-primary/10">
             <Shield className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">TI Control</h1>
-          <p className="text-muted-foreground mt-1.5 text-sm">Sistema Interno de Gestão de TI</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Auksys IT Tools</h1>
+          <p className="text-muted-foreground mt-1.5 text-sm">Plataforma de Gestão de TI</p>
         </div>
 
         <Card className="border shadow-2xl shadow-black/[0.04] dark:shadow-black/20">

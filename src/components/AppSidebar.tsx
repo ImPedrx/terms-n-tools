@@ -31,7 +31,7 @@ export function AppSidebar() {
             </div>
             {!collapsed && (
               <div className="flex flex-col min-w-0">
-                <span className="font-extrabold text-sm text-sidebar-foreground leading-tight tracking-tight">TI Control</span>
+                <span className="font-extrabold text-sm text-sidebar-foreground leading-tight tracking-tight">Auksys IT Tools</span>
                 <span className="text-[10px] text-sidebar-foreground/40 font-medium leading-tight tracking-wide uppercase">Gestão de Ativos</span>
               </div>
             )}
