@@ -9,41 +9,54 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Pencil, Trash2, RotateCcw, ScanBarcode, Monitor, Package } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, RotateCcw, ScanBarcode, Monitor, Package, Archive } from 'lucide-react';
 import { ReturnEquipmentDialog } from '@/components/ReturnEquipmentDialog';
 import { BulkEquipmentDialog } from '@/components/BulkEquipmentDialog';
-import { EQUIPMENT_TYPES, EQUIPMENT_STATUS } from '@/lib/constants';
+import { AddEquipmentTypeDialog } from '@/components/AddEquipmentTypeDialog';
+import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
+import { EQUIPMENT_STATUS } from '@/lib/constants';
 import type { Database } from '@/integrations/supabase/types';
 
-type EquipmentType = Database['public']['Enums']['equipment_type'];
 type EquipmentStatus = Database['public']['Enums']['equipment_status'];
 
 interface EquipmentForm {
-  type: EquipmentType;
+  type: string;
   brand: string;
   model: string;
   serial_number: string;
   patrimony: string;
   status: EquipmentStatus;
   observations: string;
+  is_legacy: boolean;
+  legacy_user_name: string;
+  legacy_user_email: string;
+  legacy_delivered_at: string;
 }
 
 const emptyForm: EquipmentForm = {
-  type: 'notebook', brand: '', model: '', serial_number: '', patrimony: '', status: 'disponivel', observations: '',
+  type: '', brand: '', model: '', serial_number: '', patrimony: '',
+  status: 'disponivel', observations: '',
+  is_legacy: false, legacy_user_name: '', legacy_user_email: '', legacy_delivered_at: '',
 };
+
+const ADD_TYPE_VALUE = '__add_new__';
 
 export default function Inventory() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
+  const [filterLegacy, setFilterLegacy] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<EquipmentForm>(emptyForm);
   const [returnEquipment, setReturnEquipment] = useState<any>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [addTypeOpen, setAddTypeOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: types = [] } = useEquipmentTypes();
 
   const { data: equipment, isLoading } = useQuery({
     queryKey: ['equipment'],
@@ -56,11 +69,25 @@ export default function Inventory() {
 
   const saveMutation = useMutation({
     mutationFn: async (data: EquipmentForm) => {
+      const payload = {
+        type: data.type,
+        brand: data.brand,
+        model: data.model,
+        serial_number: data.serial_number,
+        patrimony: data.patrimony || null,
+        status: data.is_legacy ? ('entregue' as const) : data.status,
+        observations: data.observations || null,
+        is_legacy: data.is_legacy,
+        legacy_user_name: data.is_legacy ? data.legacy_user_name || null : null,
+        legacy_user_email: data.is_legacy ? data.legacy_user_email || null : null,
+        legacy_delivered_at: data.is_legacy && data.legacy_delivered_at ? data.legacy_delivered_at : null,
+        assigned_to: data.is_legacy ? data.legacy_user_name || null : null,
+      };
       if (editingId) {
-        const { error } = await supabase.from('equipment').update(data).eq('id', editingId);
+        const { error } = await supabase.from('equipment').update(payload).eq('id', editingId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('equipment').insert(data);
+        const { error } = await supabase.from('equipment').insert(payload);
         if (error) throw error;
       }
     },
@@ -72,7 +99,7 @@ export default function Inventory() {
       setForm(emptyForm);
       toast({ title: editingId ? 'Equipamento atualizado' : 'Equipamento cadastrado' });
     },
-    onError: () => toast({ title: 'Erro ao salvar', variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' }),
   });
 
   const deleteMutation = useMutation({
@@ -95,17 +122,29 @@ export default function Inventory() {
       (e.patrimony || '').toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'all' || e.status === filterStatus;
     const matchType = filterType === 'all' || e.type === filterType;
-    return matchSearch && matchStatus && matchType;
+    const matchLegacy = filterLegacy === 'all' || (filterLegacy === 'legacy' ? e.is_legacy : !e.is_legacy);
+    return matchSearch && matchStatus && matchType && matchLegacy;
   });
 
   const openEdit = (eq: NonNullable<typeof equipment>[0]) => {
     setEditingId(eq.id);
-    setForm({ type: eq.type as EquipmentType, brand: eq.brand, model: eq.model, serial_number: eq.serial_number, patrimony: eq.patrimony || '', status: eq.status, observations: eq.observations || '' });
+    setForm({
+      type: eq.type, brand: eq.brand, model: eq.model, serial_number: eq.serial_number,
+      patrimony: eq.patrimony || '', status: eq.status, observations: eq.observations || '',
+      is_legacy: !!eq.is_legacy,
+      legacy_user_name: eq.legacy_user_name || '',
+      legacy_user_email: eq.legacy_user_email || '',
+      legacy_delivered_at: eq.legacy_delivered_at || '',
+    });
     setDialogOpen(true);
   };
 
   const statusLabel = (s: string) => EQUIPMENT_STATUS.find(x => x.value === s);
-  const typeLabel = (t: string) => EQUIPMENT_TYPES.find(x => x.value === t)?.label || t;
+
+  const handleTypeChange = (v: string) => {
+    if (v === ADD_TYPE_VALUE) { setAddTypeOpen(true); return; }
+    setForm({ ...form, type: v });
+  };
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -130,7 +169,7 @@ export default function Inventory() {
                 <Plus className="h-4 w-4" />Novo Equipamento
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-lg font-bold">{editingId ? 'Editar' : 'Novo'} Equipamento</DialogTitle>
               </DialogHeader>
@@ -138,16 +177,17 @@ export default function Inventory() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tipo</Label>
-                    <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as EquipmentType })}>
-                      <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                    <Select value={form.type} onValueChange={handleTypeChange}>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                       <SelectContent>
-                        {EQUIPMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                        {types.map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
+                        <SelectItem value={ADD_TYPE_VALUE} className="text-primary font-semibold">+ Adicionar novo tipo</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</Label>
-                    <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as EquipmentStatus })}>
+                    <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as EquipmentStatus })} disabled={form.is_legacy}>
                       <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {EQUIPMENT_STATUS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
@@ -163,8 +203,40 @@ export default function Inventory() {
                   <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nº de Série</Label><Input value={form.serial_number} onChange={e => setForm({ ...form, serial_number: e.target.value })} required className="rounded-xl" /></div>
                   <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Patrimônio</Label><Input value={form.patrimony} onChange={e => setForm({ ...form, patrimony: e.target.value })} className="rounded-xl" /></div>
                 </div>
+
+                {/* Toggle legado */}
+                <div className="flex items-center justify-between rounded-xl border border-dashed border-warning/40 bg-warning/5 p-3">
+                  <div className="flex items-center gap-2">
+                    <Archive className="h-4 w-4 text-warning" />
+                    <div>
+                      <Label className="text-sm font-semibold cursor-pointer">Equipamento já entregue (legado)</Label>
+                      <p className="text-[11px] text-muted-foreground">Sem termo formal — registre quem está com ele.</p>
+                    </div>
+                  </div>
+                  <Switch checked={form.is_legacy} onCheckedChange={(v) => setForm({ ...form, is_legacy: v, status: v ? 'entregue' : form.status })} />
+                </div>
+
+                {form.is_legacy && (
+                  <div className="space-y-3 rounded-xl bg-muted/40 p-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Usuário atual</Label>
+                      <Input value={form.legacy_user_name} onChange={e => setForm({ ...form, legacy_user_name: e.target.value })} placeholder="Nome do colaborador" required className="rounded-xl" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">E-mail</Label>
+                        <Input type="email" value={form.legacy_user_email} onChange={e => setForm({ ...form, legacy_user_email: e.target.value })} placeholder="email@empresa.com" className="rounded-xl" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data de entrega</Label>
+                        <Input type="date" value={form.legacy_delivered_at} onChange={e => setForm({ ...form, legacy_delivered_at: e.target.value })} className="rounded-xl" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Observações</Label><Textarea value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} className="rounded-xl" /></div>
-                <Button type="submit" className="w-full h-11 rounded-xl font-bold" disabled={saveMutation.isPending}>Salvar Equipamento</Button>
+                <Button type="submit" className="w-full h-11 rounded-xl font-bold" disabled={saveMutation.isPending || !form.type}>Salvar Equipamento</Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -172,8 +244,8 @@ export default function Inventory() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
           <Input placeholder="Pesquisar por marca, modelo, serial..." className="pl-10 h-10 rounded-xl bg-card" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
@@ -181,7 +253,7 @@ export default function Inventory() {
           <SelectTrigger className="w-[160px] h-10 rounded-xl bg-card"><SelectValue placeholder="Tipo" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os tipos</SelectItem>
-            {EQUIPMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+            {types.map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -191,16 +263,20 @@ export default function Inventory() {
             {EQUIPMENT_STATUS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={filterLegacy} onValueChange={setFilterLegacy}>
+          <SelectTrigger className="w-[160px] h-10 rounded-xl bg-card"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="legacy">Apenas legados</SelectItem>
+            <SelectItem value="non_legacy">Apenas com termo</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Counter */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground font-medium">
-          {filtered?.length || 0} equipamento{(filtered?.length || 0) !== 1 ? 's' : ''} encontrado{(filtered?.length || 0) !== 1 ? 's' : ''}
-        </p>
-      </div>
+      <p className="text-xs text-muted-foreground font-medium">
+        {filtered?.length || 0} equipamento{(filtered?.length || 0) !== 1 ? 's' : ''} encontrado{(filtered?.length || 0) !== 1 ? 's' : ''}
+      </p>
 
-      {/* Table */}
       <div className="pro-table">
         <Table>
           <TableHeader>
@@ -234,7 +310,12 @@ export default function Inventory() {
               const st = statusLabel(eq.status);
               return (
                 <TableRow key={eq.id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'}>
-                  <TableCell className="font-medium text-sm">{typeLabel(eq.type)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-sm">{eq.type}</span>
+                      {eq.is_legacy && <Badge variant="outline" className="text-[10px] border-warning/50 text-warning bg-warning/5 font-semibold">Legado</Badge>}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <div>
                       <span className="font-semibold text-sm">{eq.brand}</span>
@@ -248,7 +329,7 @@ export default function Inventory() {
                   <TableCell>
                     <div className="flex gap-0.5">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(eq)} className="h-8 w-8 rounded-lg hover:bg-primary/10"><Pencil className="h-3.5 w-3.5" /></Button>
-                      {eq.status === 'entregue' && (
+                      {eq.status === 'entregue' && !eq.is_legacy && (
                         <Button variant="ghost" size="icon" onClick={() => setReturnEquipment(eq)} title="Devolver" className="h-8 w-8 rounded-lg hover:bg-warning/10"><RotateCcw className="h-3.5 w-3.5 text-warning" /></Button>
                       )}
                       <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(eq.id)} className="h-8 w-8 rounded-lg hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
@@ -262,6 +343,7 @@ export default function Inventory() {
       </div>
       {returnEquipment && <ReturnEquipmentDialog equipment={returnEquipment} onClose={() => setReturnEquipment(null)} />}
       <BulkEquipmentDialog open={bulkOpen} onOpenChange={setBulkOpen} />
+      <AddEquipmentTypeDialog open={addTypeOpen} onOpenChange={setAddTypeOpen} onCreated={(name) => setForm(f => ({ ...f, type: name }))} />
     </div>
   );
 }
