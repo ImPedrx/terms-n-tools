@@ -86,7 +86,7 @@ export default function Login() {
         </Card>
 
         <p className="text-center text-[11px] text-muted-foreground/60 mt-8 font-medium tracking-wide">
-          ACESSO RESTRITO — SETOR DE TI
+          AUKSYS IT TOOLS — ACESSO RESTRITO
         </p>
       </div>
     </div>
