@@ -1,14 +1,14 @@
 import {
-  LayoutDashboard, Monitor, FileText, FolderOpen, Settings, Shield
+  LayoutDashboard, Monitor, FileText, FolderOpen, Settings, Shield, Building2, BarChart3
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
-import { useLocation } from 'react-router-dom';
+import { useTenant } from '@/contexts/TenantContext';
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from '@/components/ui/sidebar';
 
-const items = [
+const baseItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Inventário', url: '/inventario', icon: Monitor },
   { title: 'Novo Termo', url: '/termos/novo', icon: FileText },
@@ -16,9 +16,16 @@ const items = [
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ];
 
+const adminItems = [
+  { title: 'Dashboard Global', url: '/admin', icon: BarChart3 },
+  { title: 'Clientes', url: '/admin/clientes', icon: Building2 },
+];
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
+  const { isAdmin, impersonatedClient } = useTenant();
+  const items = isAdmin && !impersonatedClient ? adminItems : baseItems;
 
   return (
     <Sidebar collapsible="icon">
@@ -31,7 +38,7 @@ export function AppSidebar() {
             </div>
             {!collapsed && (
               <div className="flex flex-col min-w-0">
-                <span className="font-extrabold text-sm text-sidebar-foreground leading-tight tracking-tight">TI Control</span>
+                <span className="font-extrabold text-sm text-sidebar-foreground leading-tight tracking-tight">Auksys IT Tools</span>
                 <span className="text-[10px] text-sidebar-foreground/40 font-medium leading-tight tracking-wide uppercase">Gestão de Ativos</span>
               </div>
             )}

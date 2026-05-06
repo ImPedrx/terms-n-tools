@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import { AppLayout } from "@/components/AppLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -11,6 +12,8 @@ import Inventory from "./pages/Inventory";
 import NewTerm from "./pages/NewTerm";
 import TermsControl from "./pages/TermsControl";
 import SettingsPage from "./pages/SettingsPage";
+import AdminClients from "./pages/AdminClients";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,6 +23,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando...</div>;
   if (!user) return <Navigate to="/login" replace />;
   return <AppLayout>{children}</AppLayout>;
+}
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAdmin, loading } = useTenant();
+  if (loading) return null;
+  if (!isAdmin) return <Navigate to="/" replace />;
+  return <>{children}</>;
 }
 
 function AuthRoute({ children }: { children: React.ReactNode }) {
@@ -37,6 +47,8 @@ const AppRoutes = () => (
     <Route path="/termos/novo" element={<ProtectedRoute><NewTerm /></ProtectedRoute>} />
     <Route path="/termos" element={<ProtectedRoute><TermsControl /></ProtectedRoute>} />
     <Route path="/configuracoes" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+    <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminDashboard /></AdminRoute></ProtectedRoute>} />
+    <Route path="/admin/clientes" element={<ProtectedRoute><AdminRoute><AdminClients /></AdminRoute></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
@@ -47,9 +59,11 @@ const App = () => (
       <Toaster />
       <Sonner />
       <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <TenantProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </TenantProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

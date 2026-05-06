@@ -1,14 +1,5 @@
-export const EQUIPMENT_TYPES = [
-  { value: 'notebook', label: 'Notebook' },
-  { value: 'mouse', label: 'Mouse' },
-  { value: 'teclado', label: 'Teclado' },
-  { value: 'projetor', label: 'Projetor' },
-  { value: 'workstation', label: 'Workstation' },
-  { value: 'monitor', label: 'Monitor' },
-  { value: 'tablet', label: 'Tablet' },
-  { value: 'celular', label: 'Celular' },
-  { value: 'outros', label: 'Outros' },
-] as const;
+// Tipos agora vêm da tabela equipment_types por cliente.
+// Exporta apenas listas estáticas de status e o texto padrão do termo.
 
 export const EQUIPMENT_STATUS = [
   { value: 'disponivel', label: 'Disponível', color: 'bg-success' },
