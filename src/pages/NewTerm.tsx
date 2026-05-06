@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, FileText, Info } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
-import { EQUIPMENT_TYPES } from '@/lib/constants';
+import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 
 export default function NewTerm() {
   const [equipmentId, setEquipmentId] = useState('');
@@ -22,11 +22,13 @@ export default function NewTerm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: settings } = useSettings();
+  const { data: types = [] } = useEquipmentTypes();
 
   const { data: equipment } = useQuery({
     queryKey: ['equipment-available'],
     queryFn: async () => {
-      const { data } = await supabase.from('equipment').select('*').eq('status', 'disponivel').order('brand');
+      // Equipamentos legados não podem entrar em novos termos
+      const { data } = await supabase.from('equipment').select('*').eq('status', 'disponivel').eq('is_legacy', false).order('brand');
       return data || [];
     },
   });
@@ -98,7 +100,7 @@ export default function NewTerm() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os tipos</SelectItem>
-                    {EQUIPMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                    {types.map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Select value={equipmentId} onValueChange={setEquipmentId}>
