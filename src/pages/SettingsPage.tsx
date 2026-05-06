@@ -23,6 +23,9 @@ export default function SettingsPage() {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: types = [] } = useEquipmentTypes();
+  const deleteType = useDeleteEquipmentType();
+  const [addTypeOpen, setAddTypeOpen] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -146,13 +149,27 @@ export default function SettingsPage() {
               Defina quantos caracteres o serial tem para cada tipo de equipamento. No lançamento em massa, ao atingir esse número o equipamento é cadastrado automaticamente.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {EQUIPMENT_TYPES.map(t => (
-                <div key={t.value} className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold text-muted-foreground">{t.label}</Label>
-                  <Input type="number" min={1} max={100} value={serialLengths[t.value] || ''} onChange={e => updateSerialLength(t.value, parseInt(e.target.value) || 1)} className="h-9 rounded-xl text-center font-mono font-bold" />
+              {types.map(t => (
+                <div key={t.id} className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold text-muted-foreground flex items-center justify-between gap-2">
+                    <span>{t.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => { if (confirm(`Remover tipo "${t.name}"?`)) deleteType.mutate(t.id); }}
+                      className="text-destructive/60 hover:text-destructive text-[10px]"
+                      title="Remover tipo"
+                    >✕</button>
+                  </Label>
+                  <Input type="number" min={1} max={100} value={serialLengths[t.name] || ''} onChange={e => updateSerialLength(t.name, parseInt(e.target.value) || 1)} className="h-9 rounded-xl text-center font-mono font-bold" />
                 </div>
               ))}
+              {types.length === 0 && (
+                <p className="col-span-full text-xs text-muted-foreground italic">Nenhum tipo cadastrado. Adicione um para começar.</p>
+              )}
             </div>
+            <Button type="button" variant="outline" onClick={() => setAddTypeOpen(true)} className="w-full rounded-xl mt-2">
+              + Adicionar tipo de equipamento
+            </Button>
           </CardContent>
         </Card>
 
