@@ -758,7 +758,7 @@ function buildTermsSheet(wb: ExcelJS.Workbook, d: ExportData) {
 // ============= Public API =============
 export async function exportToExcel(data: ExportData) {
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'Sistema TI Control';
+  wb.creator = 'Auksys IT Tools';
   wb.created = new Date();
 
   buildDashboardSheet(wb, data);
