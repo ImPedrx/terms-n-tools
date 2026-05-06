@@ -1,7 +1,7 @@
 import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { EQUIPMENT_TYPES, EQUIPMENT_STATUS } from '@/lib/constants';
+import { EQUIPMENT_STATUS } from '@/lib/constants';
 
 // ============= Color palette =============
 const C = {
@@ -576,7 +576,7 @@ function buildEquipmentSheet(wb: ExcelJS.Workbook, d: ExportData) {
     baixado: { bg: C.greyChip, fg: C.greyMuted, label: 'Baixado' },
   };
 
-  const typeLabel = (t: string) => EQUIPMENT_TYPES.find(x => x.value === t)?.label || t;
+  const typeLabel = (t: string) => t;
 
   d.filteredEquipment.forEach((e, idx) => {
     const r = idx + 4;
