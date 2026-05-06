@@ -100,7 +100,7 @@ export default function Inventory() {
 
   const openEdit = (eq: NonNullable<typeof equipment>[0]) => {
     setEditingId(eq.id);
-    setForm({ type: eq.type, brand: eq.brand, model: eq.model, serial_number: eq.serial_number, patrimony: eq.patrimony || '', status: eq.status, observations: eq.observations || '' });
+    setForm({ type: eq.type as EquipmentType, brand: eq.brand, model: eq.model, serial_number: eq.serial_number, patrimony: eq.patrimony || '', status: eq.status, observations: eq.observations || '' });
     setDialogOpen(true);
   };
 
