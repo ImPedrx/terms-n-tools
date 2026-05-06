@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut, User, PanelLeft } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { ImpersonationBanner } from '@/components/ImpersonationBanner';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { signOut, user } = useAuth();
@@ -33,6 +34,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               </Button>
             </div>
           </header>
+          <ImpersonationBanner />
 
           {/* Main content with subtle background pattern */}
           <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
