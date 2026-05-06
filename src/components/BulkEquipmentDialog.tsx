@@ -8,11 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useSettings } from '@/hooks/useSettings';
+import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 import { ScanBarcode, CheckCircle2, Loader2 } from 'lucide-react';
-import { EQUIPMENT_TYPES, EQUIPMENT_STATUS } from '@/lib/constants';
+import { EQUIPMENT_STATUS } from '@/lib/constants';
 import type { Database } from '@/integrations/supabase/types';
 
-type EquipmentType = Database['public']['Enums']['equipment_type'];
 type EquipmentStatus = Database['public']['Enums']['equipment_status'];
 
 interface Props {
@@ -26,7 +26,7 @@ interface RegisteredItem {
 }
 
 export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
-  const [type, setType] = useState<EquipmentType>('notebook');
+  const [type, setType] = useState<string>('');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [status, setStatus] = useState<EquipmentStatus>('disponivel');
@@ -38,12 +38,13 @@ export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: settings } = useSettings();
+  const { data: types = [] } = useEquipmentTypes();
 
-  const serialLength = settings?.serial_lengths?.[type] || 0;
+  const serialLength = (type && settings?.serial_lengths?.[type]) || 0;
 
   const registerSerial = useCallback(async (serial: string) => {
     const trimmed = serial.trim();
-    if (!trimmed || !brand || !model) return;
+    if (!trimmed || !brand || !model || !type) return;
 
     if (registered.some(r => r.serial === trimmed)) {
       toast({ title: 'Serial já cadastrado nesta sessão', variant: 'destructive' });
@@ -54,7 +55,7 @@ export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
     setSaving(true);
     try {
       const { error } = await supabase.from('equipment').insert({
-        type, brand, model, serial_number: trimmed, patrimony: 'N/A', status, observations: observations || null,
+        type, brand, model, serial_number: trimmed, patrimony: null, status, observations: observations || null,
       });
       if (error) throw error;
 
@@ -70,19 +71,18 @@ export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
     }
   }, [brand, model, type, status, observations, registered, toast, queryClient]);
 
-  // Auto-register when serial reaches the configured length
   useEffect(() => {
-    if (serialLength > 0 && currentSerial.length >= serialLength && !saving && brand && model) {
+    if (serialLength > 0 && currentSerial.length >= serialLength && !saving && brand && model && type) {
       registerSerial(currentSerial);
     }
-  }, [currentSerial, serialLength, saving, brand, model, registerSerial]);
+  }, [currentSerial, serialLength, saving, brand, model, type, registerSerial]);
 
   const resetForm = () => {
-    setType('notebook'); setBrand(''); setModel(''); setStatus('disponivel');
+    setType(''); setBrand(''); setModel(''); setStatus('disponivel');
     setObservations(''); setCurrentSerial(''); setRegistered([]);
   };
 
-  const configReady = brand.trim() !== '' && model.trim() !== '';
+  const configReady = brand.trim() !== '' && model.trim() !== '' && type !== '';
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetForm(); onOpenChange(o); }}>
@@ -97,16 +97,16 @@ export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
         <div className="space-y-4">
           <div className="rounded-lg border border-dashed border-primary/30 bg-accent/30 p-4 space-y-3">
             <p className="text-sm text-muted-foreground">
-              Defina os dados comuns. Ao bipar, o serial será cadastrado automaticamente ao atingir <strong>{serialLength} caracteres</strong> (configurável em Configurações).
+              Defina os dados comuns. Ao bipar, o serial será cadastrado automaticamente ao atingir <strong>{serialLength || '?'}</strong> caracteres (configurável em Configurações).
             </p>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Tipo</Label>
-                <Select value={type} onValueChange={v => setType(v as EquipmentType)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={type} onValueChange={setType}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                   <SelectContent>
-                    {EQUIPMENT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                    {types.map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -149,7 +149,7 @@ export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
               )}
             </Label>
             {!configReady && (
-              <p className="text-xs text-warning">Preencha Marca e Modelo antes de bipar.</p>
+              <p className="text-xs text-warning">Preencha Tipo, Marca e Modelo antes de bipar.</p>
             )}
             <div className="flex gap-2 items-center">
               <Input
@@ -162,7 +162,7 @@ export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
                     registerSerial(currentSerial);
                   }
                 }}
-                placeholder={configReady ? `Bipe o serial (${serialLength} dígitos)...` : 'Preencha marca e modelo primeiro'}
+                placeholder={configReady ? `Bipe o serial${serialLength ? ` (${serialLength} dígitos)` : ''}...` : 'Preencha tipo, marca e modelo primeiro'}
                 disabled={!configReady || saving}
                 autoFocus
                 maxLength={serialLength > 0 ? serialLength : undefined}
