@@ -8,10 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, FileText, Info } from 'lucide-react';
+import { Loader2, FileText, Info, ScanBarcode } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
 import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 import { useTenant } from '@/contexts/TenantContext';
+import { useToast } from '@/hooks/use-toast';
 
 export default function NewTerm() {
   const [equipmentId, setEquipmentId] = useState('');
@@ -19,6 +20,7 @@ export default function NewTerm() {
   const [analystId, setAnalystId] = useState('');
   const [ticketNumber, setTicketNumber] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [serialSearch, setSerialSearch] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
