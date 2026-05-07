@@ -288,6 +288,7 @@ export default function Inventory() {
               <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Marca / Modelo</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nº Série</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Patrimônio</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Setor</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Responsável</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[100px]">Ações</TableHead>
