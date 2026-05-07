@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2, FileText, Info } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
 import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
+import { useTenant } from '@/contexts/TenantContext';
 
 export default function NewTerm() {
   const [equipmentId, setEquipmentId] = useState('');
@@ -23,20 +24,24 @@ export default function NewTerm() {
   const queryClient = useQueryClient();
   const { data: settings } = useSettings();
   const { data: types = [] } = useEquipmentTypes();
+  const { effectiveClientId, isAdmin } = useTenant();
 
   const { data: equipment } = useQuery({
-    queryKey: ['equipment-available'],
+    queryKey: ['equipment-available', effectiveClientId],
     queryFn: async () => {
-      // Equipamentos legados não podem entrar em novos termos
-      const { data } = await supabase.from('equipment').select('*').eq('status', 'disponivel').eq('is_legacy', false).order('brand');
+      let q = supabase.from('equipment').select('*').eq('status', 'disponivel').eq('is_legacy', false).order('brand');
+      if (isAdmin && effectiveClientId) q = q.eq('client_id', effectiveClientId);
+      const { data } = await q;
       return data || [];
     },
   });
 
   const { data: analysts } = useQuery({
-    queryKey: ['analysts'],
+    queryKey: ['analysts', effectiveClientId],
     queryFn: async () => {
-      const { data } = await supabase.from('analysts').select('*');
+      let q = supabase.from('analysts').select('*');
+      if (isAdmin && effectiveClientId) q = q.eq('client_id', effectiveClientId);
+      const { data } = await q;
       return data || [];
     },
   });

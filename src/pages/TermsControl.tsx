@@ -15,6 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useTenant } from '@/contexts/TenantContext';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'Todos os status' },
@@ -43,11 +44,14 @@ export default function TermsControl() {
   const [deleteTermId, setDeleteTermId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const { effectiveClientId, isAdmin } = useTenant();
 
   const { data: terms, isLoading } = useQuery({
-    queryKey: ['terms-all'],
+    queryKey: ['terms-all', effectiveClientId],
     queryFn: async () => {
-      const { data } = await supabase.from('responsibility_terms').select('*').order('created_at', { ascending: false });
+      let q = supabase.from('responsibility_terms').select('*').order('created_at', { ascending: false });
+      if (isAdmin && effectiveClientId) q = q.eq('client_id', effectiveClientId);
+      const { data } = await q;
       return data || [];
     },
   });

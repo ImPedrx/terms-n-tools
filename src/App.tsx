@@ -39,10 +39,17 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function HomeRoute() {
+  const { isAdmin, impersonatedClient, loading } = useTenant();
+  if (loading) return null;
+  if (isAdmin && !impersonatedClient) return <Navigate to="/admin" replace />;
+  return <Dashboard />;
+}
+
 const AppRoutes = () => (
   <Routes>
     <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
-    <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+    <Route path="/" element={<ProtectedRoute><HomeRoute /></ProtectedRoute>} />
     <Route path="/inventario" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
     <Route path="/termos/novo" element={<ProtectedRoute><NewTerm /></ProtectedRoute>} />
     <Route path="/termos" element={<ProtectedRoute><TermsControl /></ProtectedRoute>} />
