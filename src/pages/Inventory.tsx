@@ -296,14 +296,14 @@ export default function Inventory() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+              <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                 <div className="flex flex-col items-center gap-2">
                   <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                   <span className="text-sm">Carregando...</span>
                 </div>
               </TableCell></TableRow>
             ) : filtered?.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+              <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                 <div className="flex flex-col items-center gap-2">
                   <Monitor className="h-10 w-10 text-muted-foreground/20" />
                   <span className="text-sm font-medium">Nenhum equipamento encontrado</span>
