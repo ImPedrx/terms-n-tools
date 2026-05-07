@@ -10,6 +10,7 @@ import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 import { subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { exportToExcel } from '@/lib/excelExport';
 import { useToast } from '@/hooks/use-toast';
+import { useTenant } from '@/contexts/TenantContext';
 
 const PERIOD_OPTIONS = [
   { value: 'all', label: 'Todo o período' },
