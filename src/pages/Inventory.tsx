@@ -328,6 +328,7 @@ export default function Inventory() {
                   </TableCell>
                   <TableCell><code className="text-xs bg-muted px-2 py-1 rounded-md font-mono">{eq.serial_number}</code></TableCell>
                   <TableCell className="text-sm text-muted-foreground">{eq.patrimony || '—'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{(eq as any).sector || '—'}</TableCell>
                   <TableCell><Badge variant="secondary" className={`${st?.color} text-primary-foreground text-[11px] font-semibold`}>{st?.label}</Badge></TableCell>
                   <TableCell className="text-sm">{eq.assigned_to || <span className="text-muted-foreground">—</span>}</TableCell>
                   <TableCell>
