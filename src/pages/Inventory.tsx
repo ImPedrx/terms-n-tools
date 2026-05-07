@@ -208,6 +208,10 @@ export default function Inventory() {
                   <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nº de Série</Label><Input value={form.serial_number} onChange={e => setForm({ ...form, serial_number: e.target.value })} required className="rounded-xl" /></div>
                   <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Patrimônio</Label><Input value={form.patrimony} onChange={e => setForm({ ...form, patrimony: e.target.value })} className="rounded-xl" /></div>
                 </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Setor</Label>
+                  <Input value={form.sector} onChange={e => setForm({ ...form, sector: e.target.value })} placeholder="Ex: Financeiro, TI, Operações..." className="rounded-xl" />
+                </div>
 
                 {/* Toggle legado */}
                 <div className="flex items-center justify-between rounded-xl border border-dashed border-warning/40 bg-warning/5 p-3">
@@ -227,15 +231,9 @@ export default function Inventory() {
                       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Usuário atual</Label>
                       <Input value={form.legacy_user_name} onChange={e => setForm({ ...form, legacy_user_name: e.target.value })} placeholder="Nome do colaborador" required className="rounded-xl" />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">E-mail</Label>
-                        <Input type="email" value={form.legacy_user_email} onChange={e => setForm({ ...form, legacy_user_email: e.target.value })} placeholder="email@empresa.com" className="rounded-xl" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data de entrega</Label>
-                        <Input type="date" value={form.legacy_delivered_at} onChange={e => setForm({ ...form, legacy_delivered_at: e.target.value })} className="rounded-xl" />
-                      </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">E-mail</Label>
+                      <Input type="email" value={form.legacy_user_email} onChange={e => setForm({ ...form, legacy_user_email: e.target.value })} placeholder="email@empresa.com" className="rounded-xl" />
                     </div>
                   </div>
                 )}
