@@ -16,6 +16,7 @@ import { ReturnEquipmentDialog } from '@/components/ReturnEquipmentDialog';
 import { BulkEquipmentDialog } from '@/components/BulkEquipmentDialog';
 import { AddEquipmentTypeDialog } from '@/components/AddEquipmentTypeDialog';
 import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
+import { useTenant } from '@/contexts/TenantContext';
 import { EQUIPMENT_STATUS } from '@/lib/constants';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -57,11 +58,14 @@ export default function Inventory() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: types = [] } = useEquipmentTypes();
+  const { effectiveClientId, isAdmin } = useTenant();
 
   const { data: equipment, isLoading } = useQuery({
-    queryKey: ['equipment'],
+    queryKey: ['equipment', effectiveClientId],
     queryFn: async () => {
-      const { data, error } = await supabase.from('equipment').select('*').order('created_at', { ascending: false });
+      let q = supabase.from('equipment').select('*').order('created_at', { ascending: false });
+      if (isAdmin && effectiveClientId) q = q.eq('client_id', effectiveClientId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
