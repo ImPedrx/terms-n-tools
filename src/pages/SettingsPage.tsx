@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useSettings, type SerialLengths } from '@/hooks/useSettings';
 import { Settings, Loader2, Image, Trash2, ScanBarcode, Globe, FileText, Cog } from 'lucide-react';
-import { useEquipmentTypes, useDeleteEquipmentType } from '@/hooks/useEquipmentTypes';
+import { useEquipmentTypes, useDeleteEquipmentType, useUpdateEquipmentType } from '@/hooks/useEquipmentTypes';
 import { AddEquipmentTypeDialog } from '@/components/AddEquipmentTypeDialog';
 import type { Language } from '@/lib/i18n';
 
@@ -25,6 +25,7 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
   const { data: types = [] } = useEquipmentTypes();
   const deleteType = useDeleteEquipmentType();
+  const updateType = useUpdateEquipmentType();
   const [addTypeOpen, setAddTypeOpen] = useState(false);
 
   useEffect(() => {
@@ -148,19 +149,37 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground leading-relaxed">
               Defina quantos caracteres o serial tem para cada tipo de equipamento. No lançamento em massa, ao atingir esse número o equipamento é cadastrado automaticamente.
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {types.map(t => (
-                <div key={t.id} className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold text-muted-foreground flex items-center justify-between gap-2">
-                    <span>{t.name}</span>
+                <div key={t.id} className="rounded-xl border bg-muted/20 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold">{t.name}</span>
                     <button
                       type="button"
                       onClick={() => { if (confirm(`Remover tipo "${t.name}"?`)) deleteType.mutate(t.id); }}
-                      className="text-destructive/60 hover:text-destructive text-[10px]"
+                      className="text-destructive/60 hover:text-destructive text-xs"
                       title="Remover tipo"
                     >✕</button>
-                  </Label>
-                  <Input type="number" min={1} max={100} value={serialLengths[t.name] || ''} onChange={e => updateSerialLength(t.name, parseInt(e.target.value) || 1)} className="h-9 rounded-xl text-center font-mono font-bold" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Caracteres</Label>
+                      <Input type="number" min={1} max={100} value={serialLengths[t.name] || ''} onChange={e => updateSerialLength(t.name, parseInt(e.target.value) || 1)} className="h-9 rounded-lg text-center font-mono font-bold" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Alerta estoque ≤</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        defaultValue={t.min_stock_alert || 0}
+                        onBlur={(e) => {
+                          const v = Math.max(0, parseInt(e.target.value) || 0);
+                          if (v !== (t.min_stock_alert || 0)) updateType.mutate({ id: t.id, min_stock_alert: v });
+                        }}
+                        className="h-9 rounded-lg text-center font-mono font-bold"
+                      />
+                    </div>
+                  </div>
                 </div>
               ))}
               {types.length === 0 && (
