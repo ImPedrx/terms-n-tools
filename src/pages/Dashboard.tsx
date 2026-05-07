@@ -24,19 +24,24 @@ export default function Dashboard() {
   const [periodFilter, setPeriodFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const { data: equipmentTypes = [] } = useEquipmentTypes();
+  const { effectiveClientId, isAdmin } = useTenant();
 
   const { data: equipment } = useQuery({
-    queryKey: ['equipment-full'],
+    queryKey: ['equipment-full', effectiveClientId],
     queryFn: async () => {
-      const { data } = await supabase.from('equipment').select('*');
+      let q = supabase.from('equipment').select('*');
+      if (isAdmin && effectiveClientId) q = q.eq('client_id', effectiveClientId);
+      const { data } = await q;
       return data || [];
     },
   });
 
   const { data: terms } = useQuery({
-    queryKey: ['terms-full'],
+    queryKey: ['terms-full', effectiveClientId],
     queryFn: async () => {
-      const { data } = await supabase.from('responsibility_terms').select('*');
+      let q = supabase.from('responsibility_terms').select('*');
+      if (isAdmin && effectiveClientId) q = q.eq('client_id', effectiveClientId);
+      const { data } = await q;
       return data || [];
     },
   });
