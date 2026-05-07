@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
 
 export interface EquipmentType {
   id: string;
@@ -7,13 +8,13 @@ export interface EquipmentType {
 }
 
 export function useEquipmentTypes() {
+  const { effectiveClientId, isAdmin } = useTenant();
   return useQuery({
-    queryKey: ['equipment-types'],
+    queryKey: ['equipment-types', effectiveClientId],
     queryFn: async (): Promise<EquipmentType[]> => {
-      const { data, error } = await supabase
-        .from('equipment_types')
-        .select('id, name')
-        .order('name');
+      let q = supabase.from('equipment_types').select('id, name').order('name');
+      if (isAdmin && effectiveClientId) q = q.eq('client_id', effectiveClientId);
+      const { data, error } = await q;
       if (error) throw error;
       return data || [];
     },
