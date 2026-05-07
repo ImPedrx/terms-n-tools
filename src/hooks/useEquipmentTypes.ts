@@ -5,6 +5,7 @@ import { useTenant } from '@/contexts/TenantContext';
 export interface EquipmentType {
   id: string;
   name: string;
+  min_stock_alert: number;
 }
 
 export function useEquipmentTypes() {
@@ -12,11 +13,11 @@ export function useEquipmentTypes() {
   return useQuery({
     queryKey: ['equipment-types', effectiveClientId],
     queryFn: async (): Promise<EquipmentType[]> => {
-      let q = supabase.from('equipment_types').select('id, name').order('name');
+      let q = supabase.from('equipment_types').select('id, name, min_stock_alert').order('name');
       if (isAdmin && effectiveClientId) q = q.eq('client_id', effectiveClientId);
       const { data, error } = await q;
       if (error) throw error;
-      return data || [];
+      return (data || []) as EquipmentType[];
     },
   });
 }
@@ -34,6 +35,17 @@ export function useCreateEquipmentType() {
         .single();
       if (error) throw error;
       return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['equipment-types'] }),
+  });
+}
+
+export function useUpdateEquipmentType() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, min_stock_alert }: { id: string; min_stock_alert: number }) => {
+      const { error } = await supabase.from('equipment_types').update({ min_stock_alert }).eq('id', id);
+      if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['equipment-types'] }),
   });

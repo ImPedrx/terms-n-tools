@@ -12,6 +12,7 @@ import Inventory from "./pages/Inventory";
 import NewTerm from "./pages/NewTerm";
 import TermsControl from "./pages/TermsControl";
 import SettingsPage from "./pages/SettingsPage";
+import Analysts from "./pages/Analysts";
 import AdminClients from "./pages/AdminClients";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
@@ -54,6 +55,7 @@ const AppRoutes = () => (
     <Route path="/termos/novo" element={<ProtectedRoute><NewTerm /></ProtectedRoute>} />
     <Route path="/termos" element={<ProtectedRoute><TermsControl /></ProtectedRoute>} />
     <Route path="/configuracoes" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+    <Route path="/analistas" element={<ProtectedRoute><Analysts /></ProtectedRoute>} />
     <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminDashboard /></AdminRoute></ProtectedRoute>} />
     <Route path="/admin/clientes" element={<ProtectedRoute><AdminRoute><AdminClients /></AdminRoute></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />

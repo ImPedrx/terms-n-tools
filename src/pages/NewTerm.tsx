@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, FileText, Info } from 'lucide-react';
+import { Loader2, FileText, Info, ScanBarcode } from 'lucide-react';
 import { useSettings } from '@/hooks/useSettings';
 import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 import { useTenant } from '@/contexts/TenantContext';
@@ -19,6 +19,7 @@ export default function NewTerm() {
   const [analystId, setAnalystId] = useState('');
   const [ticketNumber, setTicketNumber] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [serialSearch, setSerialSearch] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -98,6 +99,26 @@ export default function NewTerm() {
           <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(); }} className="space-y-5">
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Equipamento</Label>
+              <div className="relative">
+                <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
+                <Input
+                  value={serialSearch}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSerialSearch(v);
+                    const trimmed = v.trim().toLowerCase();
+                    if (trimmed) {
+                      const match = equipment?.find(eq => eq.serial_number.toLowerCase() === trimmed);
+                      if (match) {
+                        setEquipmentId(match.id);
+                        toast({ title: 'Equipamento localizado', description: `${match.brand} ${match.model}` });
+                      }
+                    }
+                  }}
+                  placeholder="Pesquisar / bipar serial do equipamento..."
+                  className="pl-9 rounded-xl"
+                />
+              </div>
               <div className="flex gap-2">
                 <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setEquipmentId(''); }}>
                   <SelectTrigger className="w-[160px] rounded-xl">

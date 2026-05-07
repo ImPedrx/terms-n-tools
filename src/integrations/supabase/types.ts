@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           client_id: string
           created_at: string
+          email: string | null
           id: string
           name: string
           user_id: string | null
@@ -25,6 +26,7 @@ export type Database = {
         Insert: {
           client_id?: string
           created_at?: string
+          email?: string | null
           id?: string
           name: string
           user_id?: string | null
@@ -32,6 +34,7 @@ export type Database = {
         Update: {
           client_id?: string
           created_at?: string
+          email?: string | null
           id?: string
           name?: string
           user_id?: string | null
@@ -91,6 +94,7 @@ export type Database = {
           model: string
           observations: string | null
           patrimony: string | null
+          sector: string | null
           serial_number: string
           status: Database["public"]["Enums"]["equipment_status"]
           type: string
@@ -110,6 +114,7 @@ export type Database = {
           model: string
           observations?: string | null
           patrimony?: string | null
+          sector?: string | null
           serial_number: string
           status?: Database["public"]["Enums"]["equipment_status"]
           type: string
@@ -129,6 +134,7 @@ export type Database = {
           model?: string
           observations?: string | null
           patrimony?: string | null
+          sector?: string | null
           serial_number?: string
           status?: Database["public"]["Enums"]["equipment_status"]
           type?: string
@@ -156,18 +162,21 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
+          min_stock_alert: number
           name: string
         }
         Insert: {
           client_id?: string
           created_at?: string
           id?: string
+          min_stock_alert?: number
           name: string
         }
         Update: {
           client_id?: string
           created_at?: string
           id?: string
+          min_stock_alert?: number
           name?: string
         }
         Relationships: [

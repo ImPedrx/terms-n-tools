@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Monitor, FileText, FolderOpen, Settings, Shield, Building2, BarChart3
+  LayoutDashboard, Monitor, FileText, FolderOpen, Settings, Shield, Building2, BarChart3, Users
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useTenant } from '@/contexts/TenantContext';
@@ -13,6 +13,7 @@ const baseItems = [
   { title: 'Inventário', url: '/inventario', icon: Monitor },
   { title: 'Novo Termo', url: '/termos/novo', icon: FileText },
   { title: 'Controle de Termos', url: '/termos', icon: FolderOpen },
+  { title: 'Analistas', url: '/analistas', icon: Users },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ];
 

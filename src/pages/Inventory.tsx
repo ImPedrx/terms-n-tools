@@ -28,18 +28,18 @@ interface EquipmentForm {
   model: string;
   serial_number: string;
   patrimony: string;
+  sector: string;
   status: EquipmentStatus;
   observations: string;
   is_legacy: boolean;
   legacy_user_name: string;
   legacy_user_email: string;
-  legacy_delivered_at: string;
 }
 
 const emptyForm: EquipmentForm = {
-  type: '', brand: '', model: '', serial_number: '', patrimony: '',
+  type: '', brand: '', model: '', serial_number: '', patrimony: '', sector: '',
   status: 'disponivel', observations: '',
-  is_legacy: false, legacy_user_name: '', legacy_user_email: '', legacy_delivered_at: '',
+  is_legacy: false, legacy_user_name: '', legacy_user_email: '',
 };
 
 const ADD_TYPE_VALUE = '__add_new__';
@@ -79,12 +79,13 @@ export default function Inventory() {
         model: data.model,
         serial_number: data.serial_number,
         patrimony: data.patrimony || null,
+        sector: data.sector || null,
         status: data.is_legacy ? ('entregue' as const) : data.status,
         observations: data.observations || null,
         is_legacy: data.is_legacy,
         legacy_user_name: data.is_legacy ? data.legacy_user_name || null : null,
         legacy_user_email: data.is_legacy ? data.legacy_user_email || null : null,
-        legacy_delivered_at: data.is_legacy && data.legacy_delivered_at ? data.legacy_delivered_at : null,
+        legacy_delivered_at: null,
         assigned_to: data.is_legacy ? data.legacy_user_name || null : null,
       };
       if (editingId) {
@@ -134,11 +135,11 @@ export default function Inventory() {
     setEditingId(eq.id);
     setForm({
       type: eq.type, brand: eq.brand, model: eq.model, serial_number: eq.serial_number,
-      patrimony: eq.patrimony || '', status: eq.status, observations: eq.observations || '',
+      patrimony: eq.patrimony || '', sector: (eq as any).sector || '',
+      status: eq.status, observations: eq.observations || '',
       is_legacy: !!eq.is_legacy,
       legacy_user_name: eq.legacy_user_name || '',
       legacy_user_email: eq.legacy_user_email || '',
-      legacy_delivered_at: eq.legacy_delivered_at || '',
     });
     setDialogOpen(true);
   };
@@ -207,6 +208,10 @@ export default function Inventory() {
                   <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nº de Série</Label><Input value={form.serial_number} onChange={e => setForm({ ...form, serial_number: e.target.value })} required className="rounded-xl" /></div>
                   <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Patrimônio</Label><Input value={form.patrimony} onChange={e => setForm({ ...form, patrimony: e.target.value })} className="rounded-xl" /></div>
                 </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Setor</Label>
+                  <Input value={form.sector} onChange={e => setForm({ ...form, sector: e.target.value })} placeholder="Ex: Financeiro, TI, Operações..." className="rounded-xl" />
+                </div>
 
                 {/* Toggle legado */}
                 <div className="flex items-center justify-between rounded-xl border border-dashed border-warning/40 bg-warning/5 p-3">
@@ -226,15 +231,9 @@ export default function Inventory() {
                       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Usuário atual</Label>
                       <Input value={form.legacy_user_name} onChange={e => setForm({ ...form, legacy_user_name: e.target.value })} placeholder="Nome do colaborador" required className="rounded-xl" />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">E-mail</Label>
-                        <Input type="email" value={form.legacy_user_email} onChange={e => setForm({ ...form, legacy_user_email: e.target.value })} placeholder="email@empresa.com" className="rounded-xl" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data de entrega</Label>
-                        <Input type="date" value={form.legacy_delivered_at} onChange={e => setForm({ ...form, legacy_delivered_at: e.target.value })} className="rounded-xl" />
-                      </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">E-mail</Label>
+                      <Input type="email" value={form.legacy_user_email} onChange={e => setForm({ ...form, legacy_user_email: e.target.value })} placeholder="email@empresa.com" className="rounded-xl" />
                     </div>
                   </div>
                 )}
@@ -289,6 +288,7 @@ export default function Inventory() {
               <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Marca / Modelo</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nº Série</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Patrimônio</TableHead>
+              <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Setor</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Responsável</TableHead>
               <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground w-[100px]">Ações</TableHead>
@@ -296,14 +296,14 @@ export default function Inventory() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+              <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                 <div className="flex flex-col items-center gap-2">
                   <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                   <span className="text-sm">Carregando...</span>
                 </div>
               </TableCell></TableRow>
             ) : filtered?.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+              <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                 <div className="flex flex-col items-center gap-2">
                   <Monitor className="h-10 w-10 text-muted-foreground/20" />
                   <span className="text-sm font-medium">Nenhum equipamento encontrado</span>
@@ -328,6 +328,7 @@ export default function Inventory() {
                   </TableCell>
                   <TableCell><code className="text-xs bg-muted px-2 py-1 rounded-md font-mono">{eq.serial_number}</code></TableCell>
                   <TableCell className="text-sm text-muted-foreground">{eq.patrimony || '—'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{(eq as any).sector || '—'}</TableCell>
                   <TableCell><Badge variant="secondary" className={`${st?.color} text-primary-foreground text-[11px] font-semibold`}>{st?.label}</Badge></TableCell>
                   <TableCell className="text-sm">{eq.assigned_to || <span className="text-muted-foreground">—</span>}</TableCell>
                   <TableCell>
