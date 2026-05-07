@@ -28,18 +28,18 @@ interface EquipmentForm {
   model: string;
   serial_number: string;
   patrimony: string;
+  sector: string;
   status: EquipmentStatus;
   observations: string;
   is_legacy: boolean;
   legacy_user_name: string;
   legacy_user_email: string;
-  legacy_delivered_at: string;
 }
 
 const emptyForm: EquipmentForm = {
-  type: '', brand: '', model: '', serial_number: '', patrimony: '',
+  type: '', brand: '', model: '', serial_number: '', patrimony: '', sector: '',
   status: 'disponivel', observations: '',
-  is_legacy: false, legacy_user_name: '', legacy_user_email: '', legacy_delivered_at: '',
+  is_legacy: false, legacy_user_name: '', legacy_user_email: '',
 };
 
 const ADD_TYPE_VALUE = '__add_new__';
@@ -79,12 +79,13 @@ export default function Inventory() {
         model: data.model,
         serial_number: data.serial_number,
         patrimony: data.patrimony || null,
+        sector: data.sector || null,
         status: data.is_legacy ? ('entregue' as const) : data.status,
         observations: data.observations || null,
         is_legacy: data.is_legacy,
         legacy_user_name: data.is_legacy ? data.legacy_user_name || null : null,
         legacy_user_email: data.is_legacy ? data.legacy_user_email || null : null,
-        legacy_delivered_at: data.is_legacy && data.legacy_delivered_at ? data.legacy_delivered_at : null,
+        legacy_delivered_at: null,
         assigned_to: data.is_legacy ? data.legacy_user_name || null : null,
       };
       if (editingId) {
@@ -134,11 +135,11 @@ export default function Inventory() {
     setEditingId(eq.id);
     setForm({
       type: eq.type, brand: eq.brand, model: eq.model, serial_number: eq.serial_number,
-      patrimony: eq.patrimony || '', status: eq.status, observations: eq.observations || '',
+      patrimony: eq.patrimony || '', sector: (eq as any).sector || '',
+      status: eq.status, observations: eq.observations || '',
       is_legacy: !!eq.is_legacy,
       legacy_user_name: eq.legacy_user_name || '',
       legacy_user_email: eq.legacy_user_email || '',
-      legacy_delivered_at: eq.legacy_delivered_at || '',
     });
     setDialogOpen(true);
   };
