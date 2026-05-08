@@ -41,9 +41,15 @@ export default function AdminDashboard() {
 
   return (
     <div className="animate-fade-in space-y-6">
-      <div>
-        <h1 className="page-title">Dashboard Global</h1>
-        <p className="page-description">Visão consolidada de todos os clientes</p>
+      <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="page-title">Dashboard Global</h1>
+          <p className="page-description">Visão consolidada de todos os clientes</p>
+        </div>
+        <Button onClick={handleExport} disabled={exporting} className="gap-2 h-10 rounded-xl">
+          {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+          Exportar Excel
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
