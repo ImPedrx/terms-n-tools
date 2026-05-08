@@ -23,6 +23,7 @@ export default function AdminClients() {
   const [form, setForm] = useState({ name: '', primary_color: '#1565C0', is_active: true });
   const [analystOpen, setAnalystOpen] = useState<ClientRow | null>(null);
   const [analystForm, setAnalystForm] = useState({ email: '', password: '', full_name: '' });
+  const [playbookFor, setPlaybookFor] = useState<ClientRow | null>(null);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['admin-clients'],
