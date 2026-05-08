@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Monitor, FileText, FolderOpen, Settings, Shield, Building2, BarChart3, Users
+  LayoutDashboard, Monitor, FileText, FolderOpen, Settings, Shield, Building2, BarChart3, Users, History, BookOpen,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useTenant } from '@/contexts/TenantContext';
@@ -13,13 +13,16 @@ const baseItems = [
   { title: 'Inventário', url: '/inventario', icon: Monitor },
   { title: 'Novo Termo', url: '/termos/novo', icon: FileText },
   { title: 'Controle de Termos', url: '/termos', icon: FolderOpen },
+  { title: 'Playbook', url: '/playbook', icon: BookOpen },
   { title: 'Analistas', url: '/analistas', icon: Users },
+  { title: 'Histórico', url: '/historico', icon: History },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ];
 
 const adminItems = [
   { title: 'Dashboard Global', url: '/admin', icon: BarChart3 },
   { title: 'Clientes', url: '/admin/clientes', icon: Building2 },
+  { title: 'Histórico', url: '/historico', icon: History },
 ];
 
 export function AppSidebar() {
