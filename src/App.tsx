@@ -15,6 +15,8 @@ import SettingsPage from "./pages/SettingsPage";
 import Analysts from "./pages/Analysts";
 import AdminClients from "./pages/AdminClients";
 import AdminDashboard from "./pages/AdminDashboard";
+import History from "./pages/History";
+import Playbook from "./pages/Playbook";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
