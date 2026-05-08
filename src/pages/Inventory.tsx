@@ -114,6 +114,7 @@ export default function Inventory() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('equipment').delete().eq('id', id);
       if (error) throw error;
+      await logAudit({ action: 'delete', entity_type: 'equipment', entity_id: id, description: 'Equipamento excluído' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
