@@ -40,9 +40,11 @@ export default function AdminClients() {
       if (editing) {
         const { error } = await supabase.from('clients').update(form).eq('id', editing.id);
         if (error) throw error;
+        await logAudit({ action: 'update', entity_type: 'client', entity_id: editing.id, description: `Cliente "${form.name}" atualizado`, client_id: editing.id });
       } else {
-        const { error } = await supabase.from('clients').insert(form);
+        const { data, error } = await supabase.from('clients').insert(form).select().single();
         if (error) throw error;
+        await logAudit({ action: 'create', entity_type: 'client', entity_id: data?.id, description: `Cliente "${form.name}" criado`, client_id: data?.id });
       }
     },
     onSuccess: () => {
