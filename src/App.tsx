@@ -58,6 +58,8 @@ const AppRoutes = () => (
     <Route path="/termos" element={<ProtectedRoute><TermsControl /></ProtectedRoute>} />
     <Route path="/configuracoes" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
     <Route path="/analistas" element={<ProtectedRoute><Analysts /></ProtectedRoute>} />
+    <Route path="/historico" element={<ProtectedRoute><History /></ProtectedRoute>} />
+    <Route path="/playbook" element={<ProtectedRoute><Playbook /></ProtectedRoute>} />
     <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminDashboard /></AdminRoute></ProtectedRoute>} />
     <Route path="/admin/clientes" element={<ProtectedRoute><AdminRoute><AdminClients /></AdminRoute></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
