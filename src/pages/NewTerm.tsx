@@ -67,6 +67,8 @@ export default function NewTerm() {
         term_text: settings?.term_text || 'Termo de responsabilidade.',
       }).select().single();
       if (error) throw error;
+      const { logAudit } = await import('@/lib/audit');
+      await logAudit({ action: 'create', entity_type: 'term', entity_id: term?.id, description: `Termo criado para ${collaboratorName} (${selectedEquipment.brand} ${selectedEquipment.model})` });
       return term;
     },
     onSuccess: () => {
