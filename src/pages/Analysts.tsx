@@ -40,9 +40,11 @@ export default function Analysts() {
       if (editing) {
         const { error } = await supabase.from('analysts').update(payload).eq('id', editing.id);
         if (error) throw error;
+        await logAudit({ action: 'update', entity_type: 'analyst', entity_id: editing.id, description: `Analista "${payload.name}" atualizado` });
       } else {
-        const { error } = await supabase.from('analysts').insert(payload);
+        const { data, error } = await supabase.from('analysts').insert(payload).select().single();
         if (error) throw error;
+        await logAudit({ action: 'create', entity_type: 'analyst', entity_id: data?.id, description: `Analista "${payload.name}" criado` });
       }
     },
     onSuccess: () => {
