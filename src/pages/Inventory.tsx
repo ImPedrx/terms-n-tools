@@ -91,9 +91,11 @@ export default function Inventory() {
       if (editingId) {
         const { error } = await supabase.from('equipment').update(payload).eq('id', editingId);
         if (error) throw error;
+        await logAudit({ action: 'update', entity_type: 'equipment', entity_id: editingId, description: `Equipamento ${payload.brand} ${payload.model} (SN ${payload.serial_number}) atualizado` });
       } else {
-        const { error } = await supabase.from('equipment').insert(payload);
+        const { data: ins, error } = await supabase.from('equipment').insert(payload).select().single();
         if (error) throw error;
+        await logAudit({ action: 'create', entity_type: 'equipment', entity_id: ins?.id, description: `Equipamento ${payload.brand} ${payload.model} (SN ${payload.serial_number}) cadastrado` });
       }
     },
     onSuccess: () => {
