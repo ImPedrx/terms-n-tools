@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Users, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { logAudit } from '@/lib/audit';
 
 interface Analyst { id: string; name: string; email: string | null; }
 
@@ -39,9 +40,11 @@ export default function Analysts() {
       if (editing) {
         const { error } = await supabase.from('analysts').update(payload).eq('id', editing.id);
         if (error) throw error;
+        await logAudit({ action: 'update', entity_type: 'analyst', entity_id: editing.id, description: `Analista "${payload.name}" atualizado` });
       } else {
-        const { error } = await supabase.from('analysts').insert(payload);
+        const { data, error } = await supabase.from('analysts').insert(payload).select().single();
         if (error) throw error;
+        await logAudit({ action: 'create', entity_type: 'analyst', entity_id: data?.id, description: `Analista "${payload.name}" criado` });
       }
     },
     onSuccess: () => {
@@ -57,6 +60,7 @@ export default function Analysts() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('analysts').delete().eq('id', id);
       if (error) throw error;
+      await logAudit({ action: 'delete', entity_type: 'analyst', entity_id: id, description: 'Analista removido' });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['analysts-manage'] });

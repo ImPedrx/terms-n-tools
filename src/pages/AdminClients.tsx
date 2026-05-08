@@ -10,8 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Building2, Plus, Eye, Pencil, UserPlus, Loader2 } from 'lucide-react';
+import { Building2, Plus, Eye, Pencil, UserPlus, Loader2, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import PlaybookSection from './Playbook';
+import { logAudit } from '@/lib/audit';
 
 export default function AdminClients() {
   const { setImpersonatedClient } = useTenant();
@@ -22,6 +24,7 @@ export default function AdminClients() {
   const [form, setForm] = useState({ name: '', primary_color: '#1565C0', is_active: true });
   const [analystOpen, setAnalystOpen] = useState<ClientRow | null>(null);
   const [analystForm, setAnalystForm] = useState({ email: '', password: '', full_name: '' });
+  const [playbookFor, setPlaybookFor] = useState<ClientRow | null>(null);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['admin-clients'],
@@ -37,9 +40,11 @@ export default function AdminClients() {
       if (editing) {
         const { error } = await supabase.from('clients').update(form).eq('id', editing.id);
         if (error) throw error;
+        await logAudit({ action: 'update', entity_type: 'client', entity_id: editing.id, description: `Cliente "${form.name}" atualizado`, client_id: editing.id });
       } else {
-        const { error } = await supabase.from('clients').insert(form);
+        const { data, error } = await supabase.from('clients').insert(form).select().single();
         if (error) throw error;
+        await logAudit({ action: 'create', entity_type: 'client', entity_id: data?.id, description: `Cliente "${form.name}" criado`, client_id: data?.id });
       }
     },
     onSuccess: () => {
@@ -66,6 +71,7 @@ export default function AdminClients() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      await logAudit({ action: 'create', entity_type: 'analyst', description: `Analista "${analystForm.full_name}" (${analystForm.email}) criado para ${analystOpen.name}`, client_id: analystOpen.id });
     },
     onSuccess: () => {
       toast({ title: 'Analista criado!', description: 'O usuário pode fazer login com a senha definida.' });
@@ -135,6 +141,7 @@ export default function AdminClients() {
                   <TableCell>
                     <div className="flex gap-1 justify-end">
                       <Button variant="ghost" size="icon" title="Acessar ambiente" onClick={() => setImpersonatedClient(c)} className="h-8 w-8"><Eye className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Playbook" onClick={() => setPlaybookFor(c)} className="h-8 w-8"><BookOpen className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" title="Criar analista" onClick={() => setAnalystOpen(c)} className="h-8 w-8"><UserPlus className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(c)} className="h-8 w-8"><Pencil className="h-4 w-4" /></Button>
                       <div className="flex items-center px-2">
@@ -189,6 +196,14 @@ export default function AdminClients() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Playbook dialog (admin per-client) */}
+      <Dialog open={!!playbookFor} onOpenChange={(o) => !o && setPlaybookFor(null)}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Playbook — {playbookFor?.name}</DialogTitle></DialogHeader>
+          {playbookFor && <PlaybookSection clientId={playbookFor.id} embedded />}
         </DialogContent>
       </Dialog>
     </div>

@@ -19,6 +19,7 @@ import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 import { useTenant } from '@/contexts/TenantContext';
 import { EQUIPMENT_STATUS } from '@/lib/constants';
 import type { Database } from '@/integrations/supabase/types';
+import { logAudit } from '@/lib/audit';
 
 type EquipmentStatus = Database['public']['Enums']['equipment_status'];
 
@@ -91,9 +92,11 @@ export default function Inventory() {
       if (editingId) {
         const { error } = await supabase.from('equipment').update(payload).eq('id', editingId);
         if (error) throw error;
+        await logAudit({ action: 'update', entity_type: 'equipment', entity_id: editingId, description: `Equipamento ${payload.brand} ${payload.model} (SN ${payload.serial_number}) atualizado` });
       } else {
-        const { error } = await supabase.from('equipment').insert(payload);
+        const { data: ins, error } = await supabase.from('equipment').insert(payload).select().single();
         if (error) throw error;
+        await logAudit({ action: 'create', entity_type: 'equipment', entity_id: ins?.id, description: `Equipamento ${payload.brand} ${payload.model} (SN ${payload.serial_number}) cadastrado` });
       }
     },
     onSuccess: () => {
@@ -111,6 +114,7 @@ export default function Inventory() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('equipment').delete().eq('id', id);
       if (error) throw error;
+      await logAudit({ action: 'delete', entity_type: 'equipment', entity_id: id, description: 'Equipamento excluído' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
