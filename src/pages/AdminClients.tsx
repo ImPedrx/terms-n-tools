@@ -10,8 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Building2, Plus, Eye, Pencil, UserPlus, Loader2 } from 'lucide-react';
+import { Building2, Plus, Eye, Pencil, UserPlus, Loader2, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import PlaybookSection from './Playbook';
 
 export default function AdminClients() {
   const { setImpersonatedClient } = useTenant();
