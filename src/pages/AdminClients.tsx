@@ -194,6 +194,14 @@ export default function AdminClients() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Playbook dialog (admin per-client) */}
+      <Dialog open={!!playbookFor} onOpenChange={(o) => !o && setPlaybookFor(null)}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Playbook — {playbookFor?.name}</DialogTitle></DialogHeader>
+          {playbookFor && <PlaybookSection clientId={playbookFor.id} embedded />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
