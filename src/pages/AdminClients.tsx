@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Building2, Plus, Eye, Pencil, UserPlus, Loader2, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import PlaybookSection from './Playbook';
+import { logAudit } from '@/lib/audit';
 
 export default function AdminClients() {
   const { setImpersonatedClient } = useTenant();
