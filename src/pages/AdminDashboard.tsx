@@ -1,9 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
-import { Building2, Monitor, FileText, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Building2, Monitor, FileText, Users, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { exportAdminClientsExcel } from '@/lib/adminExcelExport';
+import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 export default function AdminDashboard() {
+  const { toast } = useToast();
+  const [exporting, setExporting] = useState(false);
+  const handleExport = async () => {
+    try { setExporting(true); await exportAdminClientsExcel(); toast({ title: 'Exportação concluída' }); }
+    catch (e: any) { toast({ title: 'Erro', description: e.message, variant: 'destructive' }); }
+    finally { setExporting(false); }
+  };
   const { data: clients = [] } = useQuery({
     queryKey: ['admin-global-clients'],
     queryFn: async () => (await supabase.from('clients').select('*')).data || [],
