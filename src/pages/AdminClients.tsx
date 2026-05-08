@@ -71,6 +71,7 @@ export default function AdminClients() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      await logAudit({ action: 'create', entity_type: 'analyst', description: `Analista "${analystForm.full_name}" (${analystForm.email}) criado para ${analystOpen.name}`, client_id: analystOpen.id });
     },
     onSuccess: () => {
       toast({ title: 'Analista criado!', description: 'O usuário pode fazer login com a senha definida.' });
