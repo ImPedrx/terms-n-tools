@@ -60,6 +60,7 @@ export default function Analysts() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('analysts').delete().eq('id', id);
       if (error) throw error;
+      await logAudit({ action: 'delete', entity_type: 'analyst', entity_id: id, description: 'Analista removido' });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['analysts-manage'] });
