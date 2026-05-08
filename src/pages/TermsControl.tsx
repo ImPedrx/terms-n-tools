@@ -60,6 +60,8 @@ export default function TermsControl() {
     mutationFn: async ({ termId, newStatus }: { termId: string; newStatus: string }) => {
       const { error } = await supabase.from('responsibility_terms').update({ status: newStatus as any }).eq('id', termId);
       if (error) throw error;
+      const { logAudit } = await import('@/lib/audit');
+      await logAudit({ action: 'update', entity_type: 'term', entity_id: termId, description: `Status do termo alterado para ${newStatus}` });
       if (newStatus === 'fechado') {
         const term = terms?.find(t => t.id === termId);
         if (term?.equipment_id) {
