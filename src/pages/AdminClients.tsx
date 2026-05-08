@@ -137,6 +137,7 @@ export default function AdminClients() {
                   <TableCell>
                     <div className="flex gap-1 justify-end">
                       <Button variant="ghost" size="icon" title="Acessar ambiente" onClick={() => setImpersonatedClient(c)} className="h-8 w-8"><Eye className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Playbook" onClick={() => setPlaybookFor(c)} className="h-8 w-8"><BookOpen className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" title="Criar analista" onClick={() => setAnalystOpen(c)} className="h-8 w-8"><UserPlus className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(c)} className="h-8 w-8"><Pencil className="h-4 w-4" /></Button>
                       <div className="flex items-center px-2">
