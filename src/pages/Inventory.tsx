@@ -19,6 +19,7 @@ import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 import { useTenant } from '@/contexts/TenantContext';
 import { EQUIPMENT_STATUS } from '@/lib/constants';
 import type { Database } from '@/integrations/supabase/types';
+import { logAudit } from '@/lib/audit';
 
 type EquipmentStatus = Database['public']['Enums']['equipment_status'];
 
