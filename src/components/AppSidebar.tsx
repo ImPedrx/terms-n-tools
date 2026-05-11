@@ -3,6 +3,7 @@ import {
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useTenant } from '@/contexts/TenantContext';
+import { CreditsFooter } from '@/components/CreditsFooter';
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
@@ -80,13 +81,14 @@ export function AppSidebar() {
         </div>
 
         {/* Footer */}
-        {!collapsed && (
-          <div className="p-4 border-t border-sidebar-border">
-            <p className="text-[10px] text-sidebar-foreground/25 text-center font-medium">
+        <div className="border-t border-sidebar-border">
+          <CreditsFooter collapsed={collapsed} />
+          {!collapsed && (
+            <p className="text-[10px] text-sidebar-foreground/25 text-center font-medium pb-2">
               v1.0 • Uso interno TI
             </p>
-          </div>
-        )}
+          )}
+        </div>
       </SidebarContent>
     </Sidebar>
   );
