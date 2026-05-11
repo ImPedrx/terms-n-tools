@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut, User, PanelLeft } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { HelpDialog } from '@/components/HelpDialog';
 import { ImpersonationBanner } from '@/components/ImpersonationBanner';
 import { useClientTheme } from '@/hooks/useClientTheme';
 
