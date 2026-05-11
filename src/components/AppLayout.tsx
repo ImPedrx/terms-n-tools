@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { LogOut, User, PanelLeft } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ImpersonationBanner } from '@/components/ImpersonationBanner';
+import { useClientTheme } from '@/hooks/useClientTheme';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { signOut, user } = useAuth();
+  useClientTheme();
 
   return (
     <SidebarProvider>
