@@ -3,6 +3,7 @@ import {
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useTenant } from '@/contexts/TenantContext';
+import { CreditsFooter } from '@/components/CreditsFooter';
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
