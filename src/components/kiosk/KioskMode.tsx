@@ -29,7 +29,9 @@ import {
   BarChart3,
   TrendingUp,
   Settings2,
+  Bell,
 } from 'lucide-react';
+import type { Notice } from '@/hooks/useSettings';
 
 interface Props {
   open: boolean;
@@ -101,17 +103,8 @@ export function KioskMode({ open, onClose }: Props) {
     config.notices.forEach((n) =>
       base.push({ kind: 'notice', title: n.title || 'Aviso', notice: n }),
     );
-    (settings?.notices ?? [])
-      .filter((n) => n.active)
-      .forEach((n) =>
-        base.push({
-          kind: 'notice',
-          title: n.title || 'Aviso',
-          notice: { id: n.id, title: n.title, message: n.text, color: 'info' },
-        }),
-      );
     return base;
-  }, [stockAlerts, config.notices, settings?.notices]);
+  }, [stockAlerts, config.notices]);
 
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -271,6 +264,9 @@ export function KioskMode({ open, onClose }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Notices banner */}
+      <NoticesBanner notices={(settings?.notices ?? []).filter((n) => n.active)} />
 
       {/* Slide indicators */}
       <div className="flex items-center justify-center gap-1.5 py-4 border-t border-border bg-card/60">
@@ -499,6 +495,63 @@ function ByStatusSlide({ equipment }: { equipment: any[] }) {
               </div>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NoticesBanner({ notices }: { notices: Notice[] }) {
+  const [idx, setIdx] = useState(0);
+  const [fading, setFading] = useState(false);
+
+  useEffect(() => {
+    if (notices.length <= 1) return;
+    const id = window.setInterval(() => {
+      setFading(true);
+      setTimeout(() => {
+        setIdx((i) => (i + 1) % notices.length);
+        setFading(false);
+      }, 300);
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [notices.length]);
+
+  useEffect(() => { setIdx(0); }, [notices.length]);
+
+  if (notices.length === 0) return null;
+
+  const notice = notices[idx];
+
+  return (
+    <div className="border-t border-border bg-card/80 backdrop-blur px-6 py-3 flex items-center gap-4">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
+        <Bell className="h-4 w-4 text-primary" />
+      </div>
+      <div
+        className="flex-1 min-w-0 transition-opacity duration-300"
+        style={{ opacity: fading ? 0 : 1 }}
+      >
+        {notice.title && (
+          <span className="text-xs font-bold text-primary uppercase tracking-wider mr-2">
+            {notice.title}:
+          </span>
+        )}
+        <span className="text-sm text-foreground">{notice.text}</span>
+      </div>
+      {notices.length > 1 && (
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex gap-1">
+            {notices.map((_, i) => (
+              <div
+                key={i}
+                className={`rounded-full transition-all duration-300 ${
+                  i === idx ? 'w-3.5 h-1.5 bg-primary' : 'w-1.5 h-1.5 bg-muted-foreground/30'
+                }`}
+              />
+            ))}
+          </div>
+          <span className="text-xs text-muted-foreground font-medium">{idx + 1}/{notices.length}</span>
         </div>
       )}
     </div>
