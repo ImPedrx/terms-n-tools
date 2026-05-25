@@ -11,6 +11,7 @@ import { subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { exportToExcel } from '@/lib/excelExport';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/contexts/TenantContext';
+import { NoticesCarousel } from '@/components/NoticesCarousel';
 
 const PERIOD_OPTIONS = [
   { value: 'all', label: 'Todo o período' },
@@ -188,6 +189,9 @@ export default function Dashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Avisos */}
+      <NoticesCarousel />
 
       {/* Alertas de Estoque */}
       {stockAlerts.length > 0 && (

@@ -9,10 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useSettings, type SerialLengths } from '@/hooks/useSettings';
-import { Settings, Loader2, Image, Trash2, ScanBarcode, Globe, FileText, Cog } from 'lucide-react';
+import { Settings, Loader2, Image, Trash2, ScanBarcode, Globe, FileText, Cog, Bell, Plus, Pencil, Check, X } from 'lucide-react';
 import { useEquipmentTypes, useDeleteEquipmentType, useUpdateEquipmentType } from '@/hooks/useEquipmentTypes';
 import { AddEquipmentTypeDialog } from '@/components/AddEquipmentTypeDialog';
 import type { Language } from '@/lib/i18n';
+import type { Notice } from '@/hooks/useSettings';
 
 export default function SettingsPage() {
   const { data: settings, isLoading } = useSettings();
@@ -20,6 +21,12 @@ export default function SettingsPage() {
   const [language, setLanguage] = useState<Language>('pt');
   const [logoUrl, setLogoUrl] = useState('');
   const [serialLengths, setSerialLengths] = useState<SerialLengths>({});
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [newNoticeTitle, setNewNoticeTitle] = useState('');
+  const [newNoticeText, setNewNoticeText] = useState('');
+  const [editingNoticeId, setEditingNoticeId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editText, setEditText] = useState('');
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -34,6 +41,7 @@ export default function SettingsPage() {
       setLanguage(settings.language);
       setLogoUrl(settings.company_logo_url);
       setSerialLengths(settings.serial_lengths);
+      setNotices(settings.notices ?? []);
     }
   }, [settings]);
 
@@ -63,7 +71,42 @@ export default function SettingsPage() {
       { key: 'language', value: language },
       { key: 'company_logo_url', value: logoUrl },
       { key: 'serial_lengths', value: JSON.stringify(serialLengths) },
+      { key: 'notices', value: JSON.stringify(notices) },
     ]);
+  };
+
+  const addNotice = () => {
+    const text = newNoticeText.trim();
+    if (!text) return;
+    const notice: Notice = {
+      id: crypto.randomUUID(),
+      title: newNoticeTitle.trim(),
+      text,
+      active: true,
+      created_at: new Date().toISOString(),
+    };
+    setNotices(prev => [...prev, notice]);
+    setNewNoticeTitle('');
+    setNewNoticeText('');
+  };
+
+  const deleteNotice = (id: string) => setNotices(prev => prev.filter(n => n.id !== id));
+
+  const toggleNotice = (id: string) =>
+    setNotices(prev => prev.map(n => n.id === id ? { ...n, active: !n.active } : n));
+
+  const startEdit = (notice: Notice) => {
+    setEditingNoticeId(notice.id);
+    setEditTitle(notice.title);
+    setEditText(notice.text);
+  };
+
+  const saveEdit = () => {
+    if (!editingNoticeId) return;
+    setNotices(prev => prev.map(n =>
+      n.id === editingNoticeId ? { ...n, title: editTitle.trim(), text: editText.trim() } : n
+    ));
+    setEditingNoticeId(null);
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,6 +266,112 @@ export default function SettingsPage() {
           <CardContent className="space-y-3">
             <Textarea value={termText} onChange={(e) => setTermText(e.target.value)} rows={8} placeholder="Texto do termo de responsabilidade..." className="rounded-xl" />
             <p className="text-[11px] text-muted-foreground">Este texto será usado em todos os novos termos gerados.</p>
+          </CardContent>
+        </Card>
+
+        {/* Avisos */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-bold flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center"><Bell className="h-3.5 w-3.5 text-primary" /></div>
+              Avisos do Dashboard
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Os avisos ativos são exibidos em rotação no topo do Dashboard.
+            </p>
+
+            {/* Lista de avisos */}
+            <div className="space-y-2">
+              {notices.length === 0 && (
+                <p className="text-xs text-muted-foreground italic">Nenhum aviso cadastrado.</p>
+              )}
+              {notices.map(n => (
+                <div key={n.id} className="rounded-xl border bg-muted/20 p-3 space-y-2">
+                  {editingNoticeId === n.id ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={editTitle}
+                        onChange={e => setEditTitle(e.target.value)}
+                        placeholder="Título (opcional)"
+                        className="h-8 rounded-lg text-xs"
+                      />
+                      <Textarea
+                        value={editText}
+                        onChange={e => setEditText(e.target.value)}
+                        placeholder="Texto do aviso"
+                        rows={2}
+                        className="rounded-lg text-xs"
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" className="h-7 rounded-lg gap-1 text-xs" onClick={saveEdit} disabled={!editText.trim()}>
+                          <Check className="h-3 w-3" /> Salvar
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 rounded-lg gap-1 text-xs" onClick={() => setEditingNoticeId(null)}>
+                          <X className="h-3 w-3" /> Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        {n.title && <p className="text-xs font-bold text-primary mb-0.5">{n.title}</p>}
+                        <p className="text-xs text-foreground leading-snug">{n.text}</p>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleNotice(n.id)}
+                          title={n.active ? 'Desativar' : 'Ativar'}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${
+                            n.active
+                              ? 'border-success/40 text-success bg-success/10'
+                              : 'border-muted-foreground/30 text-muted-foreground bg-muted'
+                          }`}
+                        >
+                          {n.active ? 'Ativo' : 'Inativo'}
+                        </button>
+                        <button type="button" onClick={() => startEdit(n)} className="text-muted-foreground hover:text-foreground p-1 rounded transition-colors" title="Editar">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button type="button" onClick={() => deleteNotice(n.id)} className="text-destructive/60 hover:text-destructive p-1 rounded transition-colors" title="Excluir">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Novo aviso */}
+            <div className="rounded-xl border border-dashed border-primary/30 bg-accent/20 p-3 space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Novo aviso</p>
+              <Input
+                value={newNoticeTitle}
+                onChange={e => setNewNoticeTitle(e.target.value)}
+                placeholder="Título (opcional)"
+                className="h-8 rounded-lg text-xs"
+              />
+              <Textarea
+                value={newNoticeText}
+                onChange={e => setNewNoticeText(e.target.value)}
+                placeholder="Texto do aviso..."
+                rows={2}
+                className="rounded-lg text-xs"
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="w-full h-8 rounded-lg gap-1.5 text-xs font-semibold"
+                onClick={addNotice}
+                disabled={!newNoticeText.trim()}
+              >
+                <Plus className="h-3.5 w-3.5" /> Adicionar aviso
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

@@ -54,6 +54,19 @@ export function BulkEquipmentDialog({ open, onOpenChange }: Props) {
 
     setSaving(true);
     try {
+      const { data: existing } = await supabase
+        .from('equipment')
+        .select('id')
+        .eq('serial_number', trimmed)
+        .maybeSingle();
+      if (existing) {
+        toast({ title: 'Serial duplicado', description: `"${trimmed}" já está cadastrado no inventário.`, variant: 'destructive' });
+        setCurrentSerial('');
+        setSaving(false);
+        setTimeout(() => serialInputRef.current?.focus(), 50);
+        return;
+      }
+
       const { error } = await supabase.from('equipment').insert({
         type, brand, model, serial_number: trimmed, patrimony: null, status, observations: observations || null,
       });

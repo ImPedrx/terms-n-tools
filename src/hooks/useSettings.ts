@@ -6,11 +6,20 @@ export interface SerialLengths {
   [key: string]: number;
 }
 
+export interface Notice {
+  id: string;
+  title: string;
+  text: string;
+  active: boolean;
+  created_at: string;
+}
+
 export interface SystemSettings {
   term_text: string;
   language: Language;
   company_logo_url: string;
   serial_lengths: SerialLengths;
+  notices: Notice[];
 }
 
 const DEFAULT_SERIAL_LENGTHS: SerialLengths = {
@@ -31,11 +40,17 @@ export function useSettings() {
         if (map.serial_lengths) serial_lengths = { ...DEFAULT_SERIAL_LENGTHS, ...JSON.parse(map.serial_lengths) };
       } catch {}
 
+      let notices: Notice[] = [];
+      try {
+        if (map.notices) notices = JSON.parse(map.notices);
+      } catch {}
+
       return {
         term_text: map.term_text || '',
         language: (map.language as Language) || 'pt',
         company_logo_url: map.company_logo_url || '',
         serial_lengths,
+        notices,
       };
     },
   });

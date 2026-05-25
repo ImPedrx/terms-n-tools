@@ -90,10 +90,23 @@ export default function Inventory() {
         assigned_to: data.is_legacy ? data.legacy_user_name || null : null,
       };
       if (editingId) {
+        const { data: conflict } = await supabase
+          .from('equipment')
+          .select('id')
+          .eq('serial_number', data.serial_number)
+          .neq('id', editingId)
+          .maybeSingle();
+        if (conflict) throw new Error(`O serial "${data.serial_number}" já está cadastrado em outro equipamento.`);
         const { error } = await supabase.from('equipment').update(payload).eq('id', editingId);
         if (error) throw error;
         await logAudit({ action: 'update', entity_type: 'equipment', entity_id: editingId, description: `Equipamento ${payload.brand} ${payload.model} (SN ${payload.serial_number}) atualizado` });
       } else {
+        const { data: existing } = await supabase
+          .from('equipment')
+          .select('id')
+          .eq('serial_number', data.serial_number)
+          .maybeSingle();
+        if (existing) throw new Error(`O serial "${data.serial_number}" já está cadastrado no inventário.`);
         const { data: ins, error } = await supabase.from('equipment').insert(payload).select().single();
         if (error) throw error;
         await logAudit({ action: 'create', entity_type: 'equipment', entity_id: ins?.id, description: `Equipamento ${payload.brand} ${payload.model} (SN ${payload.serial_number}) cadastrado` });
