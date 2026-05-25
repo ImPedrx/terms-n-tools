@@ -1,16 +1,18 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, PanelLeft } from 'lucide-react';
+import { LogOut, User, PanelLeft, Presentation } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { HelpDialog } from '@/components/HelpDialog';
 import { ImpersonationBanner } from '@/components/ImpersonationBanner';
 import { useClientTheme } from '@/hooks/useClientTheme';
+import { KioskMode } from '@/components/kiosk/KioskMode';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { signOut, user } = useAuth();
+  const [kioskOpen, setKioskOpen] = useState(false);
   useClientTheme();
 
   return (
@@ -31,6 +33,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 </div>
                 <span className="text-xs text-muted-foreground font-medium max-w-[200px] truncate">{user?.email}</span>
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setKioskOpen(true)}
+                title="Modo apresentação"
+                className="h-8 w-8 text-muted-foreground hover:text-primary"
+              >
+                <Presentation className="h-4 w-4" />
+              </Button>
               <ThemeToggle />
               <HelpDialog />
               <Button variant="ghost" size="icon" onClick={signOut} title="Sair" className="h-8 w-8 text-muted-foreground hover:text-destructive">
@@ -39,6 +50,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </header>
           <ImpersonationBanner />
+          <KioskMode open={kioskOpen} onClose={() => setKioskOpen(false)} />
 
           {/* Main content with subtle background pattern */}
           <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">

@@ -1,0 +1,70 @@
+name: CI/CD Docker EC2
+
+on:
+  push:
+    branches:
+      - dev
+      - staging
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.vars.outputs.image_tag }}
+      environment: ${{ steps.vars.outputs.environment }}
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Definir variáveis por ambiente
+        id: vars
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "image_tag=latest" >> $GITHUB_OUTPUT
+            echo "environment=producao" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref_name }}" = "staging" ]; then
+            echo "image_tag=staging" >> $GITHUB_OUTPUT
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          else
+            echo "image_tag=dev" >> $GITHUB_OUTPUT
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configurar AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Login no ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build e Push da imagem
+        run: |
+          IMAGE=559487953529.dkr.ecr.us-east-2.amazonaws.com/pedrx12356:${{ steps.vars.outputs.image_tag }}
+          docker build -t $IMAGE ./terms-n-tools
+          docker push $IMAGE
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: ${{ needs.build-and-push.outputs.environment }}
+
+    steps:
+      - name: Deploy na EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            IMAGE=559487953529.dkr.ecr.us-east-2.amazonaws.com/pedrx12356:${{ needs.build-and-push.outputs.image_tag }}
+            aws ecr get-login-password --region us-east-2 | \
+              docker login --username AWS --password-stdin 559487953529.dkr.ecr.us-east-2.amazonaws.com
+            docker pull $IMAGE
+            docker stop $(docker ps -q) || true
+            docker rm $(docker ps -aq) || true
+            docker run -d -p 80:80 --name app $IMAGE

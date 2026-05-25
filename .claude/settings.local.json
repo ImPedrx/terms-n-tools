@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la \"c:\\\\Users\\\\701783\\\\Desktop\\\\Curso-terraform\\\\aws-cicd-deploy\\\\\" | grep -i docker)",
+      "Read(//c/Users/701783/Desktop/Curso-terraform/**)"
+    ]
+  }
+}
