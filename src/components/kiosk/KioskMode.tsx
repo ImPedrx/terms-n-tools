@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 import { useKioskNotices, type KioskNotice } from '@/hooks/useKioskNotices';
+import { useSettings } from '@/hooks/useSettings';
 import { useTenant } from '@/contexts/TenantContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -45,6 +46,7 @@ interface Slide {
 
 export function KioskMode({ open, onClose }: Props) {
   const { config } = useKioskNotices();
+  const { data: settings } = useSettings();
   const { data: equipmentTypes = [] } = useEquipmentTypes();
   const { effectiveClientId, isAdmin } = useTenant();
 
@@ -99,8 +101,17 @@ export function KioskMode({ open, onClose }: Props) {
     config.notices.forEach((n) =>
       base.push({ kind: 'notice', title: n.title || 'Aviso', notice: n }),
     );
+    (settings?.notices ?? [])
+      .filter((n) => n.active)
+      .forEach((n) =>
+        base.push({
+          kind: 'notice',
+          title: n.title || 'Aviso',
+          notice: { id: n.id, title: n.title, message: n.text, color: 'info' },
+        }),
+      );
     return base;
-  }, [stockAlerts, config.notices]);
+  }, [stockAlerts, config.notices, settings?.notices]);
 
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
