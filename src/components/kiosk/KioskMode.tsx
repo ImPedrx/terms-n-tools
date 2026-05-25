@@ -524,34 +524,34 @@ function NoticesBanner({ notices }: { notices: Notice[] }) {
   const notice = notices[idx];
 
   return (
-    <div className="border-t border-border bg-card/80 backdrop-blur px-6 py-3 flex items-center gap-4">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
-        <Bell className="h-4 w-4 text-primary" />
+    <div className="border-t border-border bg-card/80 backdrop-blur px-8 py-5 flex items-center gap-6">
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 flex-shrink-0">
+        <Bell className="h-6 w-6 text-primary" />
       </div>
       <div
         className="flex-1 min-w-0 transition-opacity duration-300"
         style={{ opacity: fading ? 0 : 1 }}
       >
         {notice.title && (
-          <span className="text-xs font-bold text-primary uppercase tracking-wider mr-2">
-            {notice.title}:
-          </span>
+          <p className="text-sm font-bold text-primary uppercase tracking-wider mb-0.5">
+            {notice.title}
+          </p>
         )}
-        <span className="text-sm text-foreground">{notice.text}</span>
+        <p className="text-lg font-medium text-foreground leading-snug">{notice.text}</p>
       </div>
       {notices.length > 1 && (
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="flex gap-1">
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="flex gap-1.5 items-center">
             {notices.map((_, i) => (
               <div
                 key={i}
                 className={`rounded-full transition-all duration-300 ${
-                  i === idx ? 'w-3.5 h-1.5 bg-primary' : 'w-1.5 h-1.5 bg-muted-foreground/30'
+                  i === idx ? 'w-5 h-2 bg-primary' : 'w-2 h-2 bg-muted-foreground/30'
                 }`}
               />
             ))}
           </div>
-          <span className="text-xs text-muted-foreground font-medium">{idx + 1}/{notices.length}</span>
+          <span className="text-sm text-muted-foreground font-semibold">{idx + 1}/{notices.length}</span>
         </div>
       )}
     </div>
