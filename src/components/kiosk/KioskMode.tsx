@@ -38,7 +38,7 @@ interface Props {
   onClose: () => void;
 }
 
-type SlideKind = 'metrics' | 'stock' | 'terms' | 'byType' | 'byStatus' | 'notice';
+type SlideKind = 'metrics' | 'stock' | 'terms' | 'byType' | 'byStatus' | 'notice' | 'pending-terms';
 
 interface Slide {
   kind: SlideKind;
@@ -92,6 +92,11 @@ export function KioskMode({ open, onClose }: Props) {
     [equipmentTypes, allEquipment],
   );
 
+  const pendingTerms = useMemo(
+    () => allTerms.filter((t) => t.status === 'pendente'),
+    [allTerms],
+  );
+
   const slides = useMemo<Slide[]>(() => {
     const base: Slide[] = [
       { kind: 'metrics', title: 'Equipamentos' },
@@ -100,11 +105,12 @@ export function KioskMode({ open, onClose }: Props) {
     if (stockAlerts.length > 0) base.push({ kind: 'stock', title: 'Alertas de Estoque' });
     base.push({ kind: 'byType', title: 'Distribuição por Tipo' });
     base.push({ kind: 'byStatus', title: 'Distribuição por Status' });
+    if (pendingTerms.length > 0) base.push({ kind: 'pending-terms', title: 'Chamados Pendentes' });
     config.notices.forEach((n) =>
       base.push({ kind: 'notice', title: n.title || 'Aviso', notice: n }),
     );
     return base;
-  }, [stockAlerts, config.notices]);
+  }, [stockAlerts, config.notices, pendingTerms]);
 
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -254,6 +260,7 @@ export function KioskMode({ open, onClose }: Props) {
               <ByTypeSlide equipment={allEquipment} types={equipmentTypes.map((t) => t.name)} />
             )}
             {current?.kind === 'byStatus' && <ByStatusSlide equipment={allEquipment} />}
+            {current?.kind === 'pending-terms' && <PendingTermsSlide terms={pendingTerms} />}
             {current?.kind === 'notice' && current.notice && <NoticeSlide notice={current.notice} />}
             {slides.length === 0 && (
               <div className="text-center py-20">
@@ -554,6 +561,54 @@ function NoticesBanner({ notices }: { notices: Notice[] }) {
           <span className="text-sm text-muted-foreground font-semibold">{idx + 1}/{notices.length}</span>
         </div>
       )}
+    </div>
+  );
+}
+
+function PendingTermsSlide({ terms }: { terms: any[] }) {
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-8">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-warning/15">
+          <AlertTriangle className="h-6 w-6 text-warning" />
+        </div>
+        <div>
+          <h2 className="text-3xl font-extrabold tracking-tight">Chamados Pendentes</h2>
+          <p className="text-sm text-muted-foreground font-semibold">
+            {terms.length} chamado{terms.length !== 1 ? 's' : ''} aguardando ação
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {terms.map((t) => (
+          <Card key={t.id} className="border-l-[4px] border-l-warning bg-warning/5 shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-warning/15 flex-shrink-0 mt-0.5">
+                  <Clock className="h-5 w-5 text-warning" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-warning uppercase tracking-wide mb-1">
+                    #{t.ticket_number}
+                  </p>
+                  <p className="text-base font-bold truncate">{t.collaborator_name}</p>
+                  <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                    {t.equipment_description}
+                  </p>
+                  {t.analyst_name && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Analista: {t.analyst_name}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(t.created_at).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
