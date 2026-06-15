@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, FileText, Info, ScanBarcode, ChevronsUpDown, Check, Monitor, Building2 } from 'lucide-react';
+import { Loader2, FileText, ScanBarcode, ChevronsUpDown, Check, Monitor, Building2, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
@@ -16,13 +16,15 @@ import { useSettings } from '@/hooks/useSettings';
 import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 import { useTenant } from '@/contexts/TenantContext';
 import { useCollaborators, normalizeName } from '@/hooks/useCollaborators';
+import { addBySerial, removeAsset, availableEquipment, canGenerate, type AssetRow } from '@/lib/assetRows';
+import { buildTermsDocumentHtml, openPrintWindow } from '@/lib/termDocument';
+import type { Database } from '@/integrations/supabase/types';
 
 export default function NewTerm() {
-  const [equipmentId, setEquipmentId] = useState('');
+  const [assets, setAssets] = useState<AssetRow[]>([]);
   const [collaboratorName, setCollaboratorName] = useState('');
   const [sectorName, setSectorName] = useState('');
   const [analystId, setAnalystId] = useState('');
-  const [ticketNumber, setTicketNumber] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [serialSearch, setSerialSearch] = useState('');
   const [collabOpen, setCollabOpen] = useState(false);
@@ -55,17 +57,10 @@ export default function NewTerm() {
     },
   });
 
-  const missingFields = [
-    !equipmentId && 'Equipamento',
-    !collaboratorName.trim() && 'Nome do colaborador',
-    !sectorName.trim() && 'Setor do colaborador',
-    !analystId && 'Analista responsável',
-    !ticketNumber.trim() && 'Número do chamado',
-  ].filter(Boolean) as string[];
-
-  const filteredEquipment = equipment?.filter(eq => typeFilter === 'all' || eq.type === typeFilter) || [];
-  const selectedEquipment = equipment?.find(e => e.id === equipmentId);
   const selectedAnalyst = analysts?.find(a => a.id === analystId);
+
+  const lang = (settings?.language || 'pt') as import('@/lib/i18n').Language;
+  const logoUrl = settings?.company_logo_url || '';
 
   const collabKey = normalizeName(collaboratorName);
   const matchedCollaborator = collabKey ? collaborators.find(c => c.key === collabKey) : undefined;
@@ -90,43 +85,82 @@ export default function NewTerm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchedCollaborator?.key]);
 
+  const handleSerialEnter = () => {
+    const { assets: next, status } = addBySerial(assets, equipment || [], serialSearch);
+    if (status === 'added') {
+      setAssets(next);
+      setSerialSearch('');
+      toast({ title: 'Equipamento adicionado' });
+    } else if (status === 'duplicate') {
+      toast({ title: 'Equipamento já adicionado', variant: 'destructive' });
+    } else {
+      toast({ title: 'Serial não encontrado', variant: 'destructive' });
+    }
+  };
+
+  const ready = canGenerate({ collaboratorName, sectorName, analystId }, assets);
+
   const createMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedEquipment || !selectedAnalyst) throw new Error('Dados incompletos');
       const sector = sectorName.trim();
-      const { data: term, error } = await supabase.from('responsibility_terms').insert({
-        equipment_id: selectedEquipment.id,
-        equipment_description: `${selectedEquipment.brand} ${selectedEquipment.model} (${selectedEquipment.type})`,
-        serial_number: selectedEquipment.serial_number,
-        patrimony: selectedEquipment.patrimony,
-        collaborator_name: collaboratorName,
-        collaborator_sector: sector || null,
-        analyst_id: selectedAnalyst.id,
-        analyst_name: selectedAnalyst.name,
-        ticket_number: ticketNumber,
-        status: 'pendente' as const,
-        term_text: settings?.term_text || 'Termo de responsabilidade.',
-      }).select().single();
-      if (error) throw error;
+      const created: Database['public']['Tables']['responsibility_terms']['Row'][] = [];
+      const failed: { description: string; reason: string }[] = [];
 
-      // Mantém o setor do equipamento em sincronia com o setor do usuário no termo.
-      if (sector) {
-        await supabase.from('equipment').update({ sector }).eq('id', selectedEquipment.id);
+      for (const row of assets) {
+        const eq = equipment?.find(e => e.id === row.equipmentId);
+        if (!eq) { failed.push({ description: 'Equipamento removido', reason: 'não encontrado' }); continue; }
+        const description = `${eq.brand} ${eq.model} (${eq.type})`;
+        try {
+          const { data: term, error } = await supabase.from('responsibility_terms').insert({
+            equipment_id: eq.id,
+            equipment_description: description,
+            serial_number: eq.serial_number,
+            patrimony: eq.patrimony,
+            collaborator_name: collaboratorName,
+            collaborator_sector: sector || null,
+            analyst_id: analystId,
+            analyst_name: selectedAnalyst?.name,
+            ticket_number: row.ticketNumber.trim(),
+            status: 'pendente' as const,
+            term_text: settings?.term_text || 'Termo de responsabilidade.',
+          }).select().single();
+          if (error) throw error;
+
+          if (sector) await supabase.from('equipment').update({ sector }).eq('id', eq.id);
+
+          const { logAudit } = await import('@/lib/audit');
+          await logAudit({ action: 'create', entity_type: 'term', entity_id: term?.id, description: `Termo criado para ${collaboratorName} (${eq.brand} ${eq.model})` });
+          created.push(term);
+        } catch (e) {
+          failed.push({ description, reason: e instanceof Error ? e.message : 'erro ao salvar' });
+        }
       }
-
-      const { logAudit } = await import('@/lib/audit');
-      await logAudit({ action: 'create', entity_type: 'term', entity_id: term?.id, description: `Termo criado para ${collaboratorName} (${selectedEquipment.brand} ${selectedEquipment.model})` });
-      return term;
+      return { created, failed };
     },
-    onSuccess: () => {
+    onSuccess: ({ created, failed }) => {
       queryClient.invalidateQueries({ queryKey: ['terms-all'] });
       queryClient.invalidateQueries({ queryKey: ['equipment-available'] });
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['collaborators'] });
-      toast({ title: 'Termo criado com sucesso!' });
-      navigate('/termos');
+
+      if (created.length > 0) {
+        openPrintWindow(buildTermsDocumentHtml(created, logoUrl, lang));
+      }
+
+      if (failed.length === 0) {
+        toast({ title: `${created.length} termo(s) criado(s) com sucesso!` });
+        navigate('/termos');
+      } else {
+        const createdIds = new Set(created.map((t) => t.equipment_id));
+        setAssets(prev => prev.filter(a => !createdIds.has(a.equipmentId)));
+        toast({
+          title: `${created.length} criado(s), ${failed.length} com falha`,
+          description: failed.map(f => `${f.description}: ${f.reason}`).join(' · '),
+          variant: 'destructive',
+        });
+      }
     },
-    onError: () => toast({ title: 'Erro ao criar termo', variant: 'destructive' }),
+    onError: () => toast({ title: 'Erro ao criar termos', variant: 'destructive' }),
   });
 
   return (
@@ -154,24 +188,14 @@ export default function NewTerm() {
                 <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                 <Input
                   value={serialSearch}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setSerialSearch(v);
-                    const trimmed = v.trim().toLowerCase();
-                    if (trimmed) {
-                      const match = equipment?.find(eq => eq.serial_number.toLowerCase() === trimmed);
-                      if (match) {
-                        setEquipmentId(match.id);
-                        toast({ title: 'Equipamento localizado', description: `${match.brand} ${match.model}` });
-                      }
-                    }
-                  }}
-                  placeholder="Pesquisar / bipar serial do equipamento..."
+                  onChange={(e) => setSerialSearch(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSerialEnter(); } }}
+                  placeholder="Bipar / digitar serial e pressionar Enter..."
                   className="pl-9 rounded-xl"
                 />
               </div>
               <div className="flex gap-2">
-                <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setEquipmentId(''); }}>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
                   <SelectTrigger className="w-[160px] rounded-xl">
                     <SelectValue placeholder="Tipo" />
                   </SelectTrigger>
@@ -180,17 +204,21 @@ export default function NewTerm() {
                     {types.map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Select value={equipmentId} onValueChange={setEquipmentId}>
+                <Select
+                  value=""
+                  onValueChange={(id) => {
+                    if (assets.some(a => a.equipmentId === id)) return;
+                    setAssets([...assets, { id: crypto.randomUUID(), equipmentId: id, ticketNumber: '' }]);
+                  }}
+                >
                   <SelectTrigger className="flex-1 rounded-xl">
-                    <SelectValue placeholder="Selecione o equipamento" />
+                    <SelectValue placeholder="+ Adicionar equipamento manualmente" />
                   </SelectTrigger>
                   <SelectContent>
-                    {filteredEquipment.map(eq => (
-                      <SelectItem key={eq.id} value={eq.id}>
-                        {eq.brand} {eq.model} — SN: {eq.serial_number}
-                      </SelectItem>
+                    {availableEquipment(equipment || [], assets, typeFilter).map(eq => (
+                      <SelectItem key={eq.id} value={eq.id}>{eq.brand} {eq.model} — SN: {eq.serial_number}</SelectItem>
                     ))}
-                    {filteredEquipment.length === 0 && (
+                    {availableEquipment(equipment || [], assets, typeFilter).length === 0 && (
                       <div className="px-2 py-4 text-center text-sm text-muted-foreground">Nenhum equipamento disponível</div>
                     )}
                   </SelectContent>
@@ -198,17 +226,32 @@ export default function NewTerm() {
               </div>
             </div>
 
-            {selectedEquipment && (
-              <div className="rounded-xl bg-accent/50 border border-accent p-4 text-sm space-y-1.5">
-                <div className="flex items-center gap-2 mb-2">
-                  <Info className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-bold text-primary uppercase tracking-wider">Detalhes do equipamento</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <p><span className="font-semibold text-muted-foreground">Tipo:</span> {selectedEquipment.type}</p>
-                  <p><span className="font-semibold text-muted-foreground">Marca:</span> {selectedEquipment.brand} {selectedEquipment.model}</p>
-                  <p><span className="font-semibold text-muted-foreground">Série:</span> {selectedEquipment.serial_number}</p>
-                  <p><span className="font-semibold text-muted-foreground">Patrimônio:</span> {selectedEquipment.patrimony || '—'}</p>
+            {assets.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Ativos ({assets.length})
+                </Label>
+                <div className="space-y-2">
+                  {assets.map((row) => {
+                    const eq = equipment?.find(e => e.id === row.equipmentId);
+                    return (
+                      <div key={row.id} className="flex items-center gap-2 rounded-xl border bg-accent/30 p-3">
+                        <div className="flex-1 min-w-0 text-sm">
+                          <p className="font-semibold truncate">{eq ? `${eq.brand} ${eq.model}` : 'Equipamento'}</p>
+                          <p className="text-xs text-muted-foreground truncate">SN: {eq?.serial_number}{eq?.patrimony ? ` — Pat: ${eq.patrimony}` : ''}</p>
+                        </div>
+                        <Input
+                          value={row.ticketNumber}
+                          onChange={(e) => setAssets(assets.map(a => a.id === row.id ? { ...a, ticketNumber: e.target.value } : a))}
+                          placeholder="Nº do chamado"
+                          className="w-40 rounded-xl"
+                        />
+                        <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-lg flex-shrink-0" onClick={() => setAssets(removeAsset(assets, row.id))}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -299,24 +342,19 @@ export default function NewTerm() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Número do Chamado</Label>
-              <Input value={ticketNumber} onChange={e => setTicketNumber(e.target.value)} placeholder="Ex: INC-12345" required className="rounded-xl" />
-            </div>
-
             <div className="rounded-xl border bg-muted/30 p-4">
               <Label className="text-[10px] text-muted-foreground mb-2 block font-bold uppercase tracking-wider">Texto do Termo</Label>
               <p className="text-sm whitespace-pre-line text-muted-foreground leading-relaxed">{settings?.term_text || 'Carregando...'}</p>
             </div>
 
-            {missingFields.length > 0 && (
+            {!ready && (
               <p className="text-xs text-muted-foreground text-center">
-                Preencha para continuar: <span className="font-semibold text-foreground/80">{missingFields.join(', ')}</span>
+                Preencha colaborador, setor, analista e o chamado de cada ativo para continuar.
               </p>
             )}
-            <Button type="submit" className="w-full h-12 rounded-xl font-bold shadow-md shadow-primary/20 text-sm" disabled={createMutation.isPending || missingFields.length > 0}>
+            <Button type="submit" className="w-full h-12 rounded-xl font-bold shadow-md shadow-primary/20 text-sm" disabled={createMutation.isPending || !ready}>
               {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Gerar Termo de Responsabilidade
+              Gerar {assets.length > 0 ? `${assets.length} ` : ''}Termo(s) de Responsabilidade
             </Button>
           </form>
         </CardContent>
