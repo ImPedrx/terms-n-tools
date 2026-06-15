@@ -18,6 +18,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { Language } from '@/lib/i18n';
 import type { Notice } from '@/hooks/useSettings';
+import { useTenant } from '@/contexts/TenantContext';
+
 
 export default function SettingsPage() {
   const { data: settings, isLoading } = useSettings();
