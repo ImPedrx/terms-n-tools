@@ -23,6 +23,8 @@ import { useTenant } from '@/contexts/TenantContext';
 
 export default function SettingsPage() {
   const { data: settings, isLoading } = useSettings();
+  const { effectiveClientId } = useTenant();
+
   const [termText, setTermText] = useState('');
   const [language, setLanguage] = useState<Language>('pt');
   const [logoUrl, setLogoUrl] = useState('');
