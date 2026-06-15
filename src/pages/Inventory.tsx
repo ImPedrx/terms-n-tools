@@ -20,6 +20,12 @@ import { useTenant } from '@/contexts/TenantContext';
 import { EQUIPMENT_STATUS } from '@/lib/constants';
 import type { Database } from '@/integrations/supabase/types';
 import { logAudit } from '@/lib/audit';
+import { usePagination } from '@/hooks/usePagination';
+import { TablePagination } from '@/components/TablePagination';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type EquipmentStatus = Database['public']['Enums']['equipment_status'];
 
@@ -56,6 +62,7 @@ export default function Inventory() {
   const [returnEquipment, setReturnEquipment] = useState<any>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [addTypeOpen, setAddTypeOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: types = [] } = useEquipmentTypes();
@@ -133,7 +140,9 @@ export default function Inventory() {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['equipment-stats'] });
       toast({ title: 'Equipamento excluído' });
+      setDeleteId(null);
     },
+    onError: (e: any) => toast({ title: 'Erro ao excluir', description: e?.message, variant: 'destructive' }),
   });
 
   const filtered = equipment?.filter(e => {
@@ -146,7 +155,9 @@ export default function Inventory() {
     const matchType = filterType === 'all' || e.type === filterType;
     const matchLegacy = filterLegacy === 'all' || (filterLegacy === 'legacy' ? e.is_legacy : !e.is_legacy);
     return matchSearch && matchStatus && matchType && matchLegacy;
-  });
+  }) || [];
+
+  const pagination = usePagination(filtered, 20);
 
   const openEdit = (eq: NonNullable<typeof equipment>[0]) => {
     setEditingId(eq.id);
@@ -293,10 +304,6 @@ export default function Inventory() {
         </Select>
       </div>
 
-      <p className="text-xs text-muted-foreground font-medium">
-        {filtered?.length || 0} equipamento{(filtered?.length || 0) !== 1 ? 's' : ''} encontrado{(filtered?.length || 0) !== 1 ? 's' : ''}
-      </p>
-
       <div className="pro-table">
         <Table>
           <TableHeader>
@@ -319,7 +326,7 @@ export default function Inventory() {
                   <span className="text-sm">Carregando...</span>
                 </div>
               </TableCell></TableRow>
-            ) : filtered?.length === 0 ? (
+            ) : pagination.total === 0 ? (
               <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                 <div className="flex flex-col items-center gap-2">
                   <Monitor className="h-10 w-10 text-muted-foreground/20" />
@@ -327,7 +334,7 @@ export default function Inventory() {
                   <span className="text-xs">Tente ajustar os filtros ou cadastre um novo</span>
                 </div>
               </TableCell></TableRow>
-            ) : filtered?.map((eq, i) => {
+            ) : pagination.paged.map((eq, i) => {
               const st = statusLabel(eq.status);
               return (
                 <TableRow key={eq.id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'}>
@@ -354,7 +361,7 @@ export default function Inventory() {
                       {eq.status === 'entregue' && !eq.is_legacy && (
                         <Button variant="ghost" size="icon" onClick={() => setReturnEquipment(eq)} title="Devolver" className="h-8 w-8 rounded-lg hover:bg-warning/10"><RotateCcw className="h-3.5 w-3.5 text-warning" /></Button>
                       )}
-                      <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(eq.id)} className="h-8 w-8 rounded-lg hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => setDeleteId(eq.id)} title="Excluir" className="h-8 w-8 rounded-lg hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -363,9 +370,39 @@ export default function Inventory() {
           </TableBody>
         </Table>
       </div>
+
+      <TablePagination
+        page={pagination.page} totalPages={pagination.totalPages}
+        from={pagination.from} to={pagination.to} total={pagination.total}
+        canPrev={pagination.canPrev} canNext={pagination.canNext}
+        onPrev={pagination.prev} onNext={pagination.next}
+        label="equipamentos"
+      />
+
       {returnEquipment && <ReturnEquipmentDialog equipment={returnEquipment} onClose={() => setReturnEquipment(null)} />}
       <BulkEquipmentDialog open={bulkOpen} onOpenChange={setBulkOpen} />
       <AddEquipmentTypeDialog open={addTypeOpen} onOpenChange={setAddTypeOpen} onCreated={(name) => setForm(f => ({ ...f, type: name }))} />
+
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-bold">Excluir Equipamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este equipamento? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

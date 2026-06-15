@@ -270,6 +270,7 @@ export type Database = {
           analyst_name: string
           client_id: string
           collaborator_name: string
+          collaborator_sector: string | null
           created_at: string
           equipment_description: string
           equipment_id: string | null
@@ -288,6 +289,7 @@ export type Database = {
           analyst_name: string
           client_id?: string
           collaborator_name: string
+          collaborator_sector?: string | null
           created_at?: string
           equipment_description: string
           equipment_id?: string | null
@@ -306,6 +308,7 @@ export type Database = {
           analyst_name?: string
           client_id?: string
           collaborator_name?: string
+          collaborator_sector?: string | null
           created_at?: string
           equipment_description?: string
           equipment_id?: string | null

@@ -55,6 +55,9 @@ export function ReturnEquipmentDialog({ equipment, onClose }: Props) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['equipment-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment-available'] });
+      queryClient.invalidateQueries({ queryKey: ['collaborators'] });
+      queryClient.invalidateQueries({ queryKey: ['terms-all'] });
       toast({ title: 'Equipamento devolvido com sucesso!' });
       onClose();
     },

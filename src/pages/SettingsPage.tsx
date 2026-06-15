@@ -12,6 +12,10 @@ import { useSettings, type SerialLengths } from '@/hooks/useSettings';
 import { Settings, Loader2, Image, Trash2, ScanBarcode, Globe, FileText, Cog, Bell, Plus, Pencil, Check, X } from 'lucide-react';
 import { useEquipmentTypes, useDeleteEquipmentType, useUpdateEquipmentType } from '@/hooks/useEquipmentTypes';
 import { AddEquipmentTypeDialog } from '@/components/AddEquipmentTypeDialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type { Language } from '@/lib/i18n';
 import type { Notice } from '@/hooks/useSettings';
 
@@ -34,6 +38,24 @@ export default function SettingsPage() {
   const deleteType = useDeleteEquipmentType();
   const updateType = useUpdateEquipmentType();
   const [addTypeOpen, setAddTypeOpen] = useState(false);
+  const [deleteTypeTarget, setDeleteTypeTarget] = useState<{ id: string; name: string } | null>(null);
+
+  // Detecta alterações não salvas comparando o formulário com os dados carregados.
+  const isDirty = !!settings && (
+    termText !== settings.term_text ||
+    language !== settings.language ||
+    logoUrl !== settings.company_logo_url ||
+    JSON.stringify(serialLengths) !== JSON.stringify(settings.serial_lengths) ||
+    JSON.stringify(notices) !== JSON.stringify(settings.notices ?? [])
+  );
+
+  // Avisa antes de fechar/recarregar a aba com alterações pendentes.
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   useEffect(() => {
     if (settings) {
@@ -199,7 +221,7 @@ export default function SettingsPage() {
                     <span className="text-sm font-semibold">{t.name}</span>
                     <button
                       type="button"
-                      onClick={() => { if (confirm(`Remover tipo "${t.name}"?`)) deleteType.mutate(t.id); }}
+                      onClick={() => setDeleteTypeTarget({ id: t.id, name: t.name })}
                       className="text-destructive/60 hover:text-destructive text-xs"
                       title="Remover tipo"
                     >✕</button>
@@ -375,13 +397,40 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Button onClick={handleSave} disabled={saveMutation.isPending} className="w-full h-12 rounded-xl font-bold shadow-md shadow-primary/20">
-          {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-          Salvar Configurações
-        </Button>
+        <div className="space-y-2">
+          {isDirty && (
+            <p className="text-xs text-warning font-medium text-center">
+              Você tem alterações não salvas.
+            </p>
+          )}
+          <Button onClick={handleSave} disabled={saveMutation.isPending || !isDirty} className="w-full h-12 rounded-xl font-bold shadow-md shadow-primary/20">
+            {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            {isDirty ? 'Salvar Configurações' : 'Tudo salvo'}
+          </Button>
+        </div>
       </div>
 
       <AddEquipmentTypeDialog open={addTypeOpen} onOpenChange={setAddTypeOpen} />
+
+      <AlertDialog open={!!deleteTypeTarget} onOpenChange={(open) => { if (!open) setDeleteTypeTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-bold">Remover Tipo de Equipamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remover o tipo <strong>{deleteTypeTarget?.name}</strong>? Equipamentos já cadastrados com este tipo não serão alterados, mas ele deixará de aparecer nas listas de seleção.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { if (deleteTypeTarget) deleteType.mutate(deleteTypeTarget.id); setDeleteTypeTarget(null); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

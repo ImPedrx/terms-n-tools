@@ -20,7 +20,7 @@ export async function logAudit(input: AuditInput) {
       const { data: prof } = await supabase.from('user_profiles').select('client_id').eq('id', user.id).maybeSingle();
       clientId = prof?.client_id ?? null;
     }
-    await (supabase.from('audit_logs' as any) as any).insert({
+    await supabase.from('audit_logs').insert({
       action: input.action,
       entity_type: input.entity_type,
       entity_id: input.entity_id ?? null,

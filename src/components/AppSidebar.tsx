@@ -38,8 +38,8 @@ export function AppSidebar() {
         {/* Brand */}
         <div className="p-5 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sidebar-primary to-sidebar-primary/70 shadow-lg shadow-sidebar-primary/20">
-              <Shield className="h-5 w-5 text-sidebar-primary-foreground" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <Shield className="h-5 w-5 text-primary" />
             </div>
             {!collapsed && (
               <div className="flex flex-col min-w-0">

@@ -17,7 +17,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full relative">
+        <div className="fixed inset-0 -z-10 bg-background" />
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           {/* Professional header */}

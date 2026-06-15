@@ -7,11 +7,34 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { History as HistoryIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { History as HistoryIcon, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { usePagination } from '@/hooks/usePagination';
+import { TablePagination } from '@/components/TablePagination';
+import { exportAuditLogsExcel } from '@/lib/auditExcelExport';
 
 const ACTIONS = ['create', 'update', 'delete'];
 const ENTITIES = ['equipment', 'term', 'client', 'analyst', 'playbook', 'equipment_type'];
+
+const ACTION_LABELS: Record<string, string> = {
+  create: 'Criação',
+  update: 'Edição',
+  delete: 'Exclusão',
+};
+
+const ENTITY_LABELS: Record<string, string> = {
+  equipment: 'Equipamento',
+  term: 'Termo',
+  client: 'Cliente',
+  analyst: 'Analista',
+  playbook: 'Playbook',
+  equipment_type: 'Tipo de equipamento',
+};
+
+const actionLabel = (a: string) => ACTION_LABELS[a] || a;
+const entityLabel = (e: string) => ENTITY_LABELS[e] || e;
 
 const actionColor: Record<string, string> = {
   create: 'bg-success/15 text-success border-success/30',
@@ -21,20 +44,22 @@ const actionColor: Record<string, string> = {
 
 export default function History() {
   const { effectiveClientId, isAdmin, impersonatedClient } = useTenant();
+  const { toast } = useToast();
   const [filterAction, setFilterAction] = useState<string>('all');
   const [filterEntity, setFilterEntity] = useState<string>('all');
   const [filterUser, setFilterUser] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ['audit-logs', effectiveClientId, isAdmin && !impersonatedClient ? 'global' : 'tenant'],
     queryFn: async () => {
-      let q = (supabase.from('audit_logs' as any) as any).select('*').order('created_at', { ascending: false }).limit(500);
+      let q = supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(500);
       if (effectiveClientId) q = q.eq('client_id', effectiveClientId);
       const { data, error } = await q;
       if (error) throw error;
-      return (data as any[]) || [];
+      return data || [];
     },
   });
 
@@ -49,16 +74,37 @@ export default function History() {
     });
   }, [logs, filterAction, filterEntity, filterUser, from, to]);
 
+  const pagination = usePagination(filtered, 25);
+
+  const handleExport = async () => {
+    if (filtered.length === 0) { toast({ title: 'Nada para exportar', description: 'Nenhum registro com os filtros atuais.' }); return; }
+    try {
+      setExporting(true);
+      await exportAuditLogsExcel(filtered as any[], actionLabel, entityLabel);
+      toast({ title: 'Exportação concluída' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao exportar', description: e?.message, variant: 'destructive' });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="animate-fade-in space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/20">
-          <HistoryIcon className="h-5 w-5 text-primary-foreground" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/20">
+            <HistoryIcon className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="page-title">Histórico</h1>
+            <p className="page-description">Auditoria de ações realizadas no sistema</p>
+          </div>
         </div>
-        <div>
-          <h1 className="page-title">Histórico</h1>
-          <p className="page-description">Auditoria de ações realizadas no sistema</p>
-        </div>
+        <Button onClick={handleExport} disabled={exporting} variant="outline" className="gap-2 h-10 rounded-xl font-semibold">
+          {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+          Exportar Excel
+        </Button>
       </div>
 
       <Card>
@@ -68,7 +114,7 @@ export default function History() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas</SelectItem>
-                {ACTIONS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                {ACTIONS.map(a => <SelectItem key={a} value={a}>{actionLabel(a)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -77,7 +123,7 @@ export default function History() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas</SelectItem>
-                {ENTITIES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                {ENTITIES.map(a => <SelectItem key={a} value={a}>{entityLabel(a)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -104,13 +150,13 @@ export default function History() {
             <tbody>
               {isLoading ? (
                 <tr><td colSpan={5} className="text-center p-8 text-muted-foreground">Carregando...</td></tr>
-              ) : filtered.length === 0 ? (
+              ) : pagination.total === 0 ? (
                 <tr><td colSpan={5} className="text-center p-8 text-muted-foreground">Nenhum registro encontrado</td></tr>
-              ) : filtered.map((l: any) => (
+              ) : pagination.paged.map((l: any) => (
                 <tr key={l.id} className="border-t hover:bg-muted/30">
                   <td className="p-3 whitespace-nowrap text-xs text-muted-foreground">{format(new Date(l.created_at), 'dd/MM/yyyy HH:mm:ss')}</td>
-                  <td className="p-3"><Badge variant="outline" className={actionColor[l.action] || ''}>{l.action}</Badge></td>
-                  <td className="p-3 font-medium">{l.entity_type}</td>
+                  <td className="p-3"><Badge variant="outline" className={actionColor[l.action] || ''}>{actionLabel(l.action)}</Badge></td>
+                  <td className="p-3 font-medium">{entityLabel(l.entity_type)}</td>
                   <td className="p-3 text-muted-foreground">{l.user_email || '—'}</td>
                   <td className="p-3">{l.description || '—'}</td>
                 </tr>
@@ -119,6 +165,14 @@ export default function History() {
           </table>
         </CardContent>
       </Card>
+
+      <TablePagination
+        page={pagination.page} totalPages={pagination.totalPages}
+        from={pagination.from} to={pagination.to} total={pagination.total}
+        canPrev={pagination.canPrev} canNext={pagination.canNext}
+        onPrev={pagination.prev} onNext={pagination.next}
+        label="registros"
+      />
     </div>
   );
 }

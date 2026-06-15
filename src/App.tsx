@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -18,8 +19,6 @@ import AdminDashboard from "./pages/AdminDashboard";
 import History from "./pages/History";
 import Playbook from "./pages/Playbook";
 import NotFound from "./pages/NotFound";
-
-const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -66,7 +65,11 @@ const AppRoutes = () => (
   </Routes>
 );
 
-const App = () => (
+const App = () => {
+  // Mantido em estado para sobreviver a re-renders e não ser recriado
+  // a cada HMR no desenvolvimento (o que limparia o cache de queries).
+  const [queryClient] = useState(() => new QueryClient());
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -80,6 +83,7 @@ const App = () => (
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

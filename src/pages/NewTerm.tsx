@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,24 +8,32 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, FileText, Info, ScanBarcode } from 'lucide-react';
+import { Loader2, FileText, Info, ScanBarcode, ChevronsUpDown, Check, Monitor, Building2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import { useSettings } from '@/hooks/useSettings';
 import { useEquipmentTypes } from '@/hooks/useEquipmentTypes';
 import { useTenant } from '@/contexts/TenantContext';
+import { useCollaborators, normalizeName } from '@/hooks/useCollaborators';
 
 export default function NewTerm() {
   const [equipmentId, setEquipmentId] = useState('');
   const [collaboratorName, setCollaboratorName] = useState('');
+  const [sectorName, setSectorName] = useState('');
   const [analystId, setAnalystId] = useState('');
   const [ticketNumber, setTicketNumber] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [serialSearch, setSerialSearch] = useState('');
+  const [collabOpen, setCollabOpen] = useState(false);
+  const [sectorOpen, setSectorOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: settings } = useSettings();
   const { data: types = [] } = useEquipmentTypes();
   const { effectiveClientId, isAdmin } = useTenant();
+  const { data: collaborators = [] } = useCollaborators();
 
   const { data: equipment } = useQuery({
     queryKey: ['equipment-available', effectiveClientId],
@@ -47,19 +55,52 @@ export default function NewTerm() {
     },
   });
 
+  const missingFields = [
+    !equipmentId && 'Equipamento',
+    !collaboratorName.trim() && 'Nome do colaborador',
+    !sectorName.trim() && 'Setor do colaborador',
+    !analystId && 'Analista responsável',
+    !ticketNumber.trim() && 'Número do chamado',
+  ].filter(Boolean) as string[];
+
   const filteredEquipment = equipment?.filter(eq => typeFilter === 'all' || eq.type === typeFilter) || [];
   const selectedEquipment = equipment?.find(e => e.id === equipmentId);
   const selectedAnalyst = analysts?.find(a => a.id === analystId);
 
+  const collabKey = normalizeName(collaboratorName);
+  const matchedCollaborator = collabKey ? collaborators.find(c => c.key === collabKey) : undefined;
+  const collabSuggestions = collabKey
+    ? collaborators.filter(c => c.key !== collabKey && c.key.includes(collabKey)).slice(0, 6)
+    : collaborators.slice(0, 6);
+
+  const allSectors = useMemo(
+    () => [...new Set(collaborators.map(c => c.sector?.trim()).filter((s): s is string => !!s))]
+      .sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [collaborators]
+  );
+  const sectorKey = normalizeName(sectorName);
+  const sectorSuggestions = sectorKey
+    ? allSectors.filter(s => normalizeName(s).includes(sectorKey)).slice(0, 6)
+    : allSectors.slice(0, 6);
+
+  // Pré-preenche o setor com o setor conhecido do colaborador toda vez que a pessoa
+  // selecionada muda; deixa o analista sobrescrever sem o efeito reverter.
+  useEffect(() => {
+    if (matchedCollaborator?.sector) setSectorName(matchedCollaborator.sector);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchedCollaborator?.key]);
+
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!selectedEquipment || !selectedAnalyst) throw new Error('Dados incompletos');
+      const sector = sectorName.trim();
       const { data: term, error } = await supabase.from('responsibility_terms').insert({
         equipment_id: selectedEquipment.id,
         equipment_description: `${selectedEquipment.brand} ${selectedEquipment.model} (${selectedEquipment.type})`,
         serial_number: selectedEquipment.serial_number,
         patrimony: selectedEquipment.patrimony,
         collaborator_name: collaboratorName,
+        collaborator_sector: sector || null,
         analyst_id: selectedAnalyst.id,
         analyst_name: selectedAnalyst.name,
         ticket_number: ticketNumber,
@@ -67,6 +108,12 @@ export default function NewTerm() {
         term_text: settings?.term_text || 'Termo de responsabilidade.',
       }).select().single();
       if (error) throw error;
+
+      // Mantém o setor do equipamento em sincronia com o setor do usuário no termo.
+      if (sector) {
+        await supabase.from('equipment').update({ sector }).eq('id', selectedEquipment.id);
+      }
+
       const { logAudit } = await import('@/lib/audit');
       await logAudit({ action: 'create', entity_type: 'term', entity_id: term?.id, description: `Termo criado para ${collaboratorName} (${selectedEquipment.brand} ${selectedEquipment.model})` });
       return term;
@@ -74,6 +121,8 @@ export default function NewTerm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['terms-all'] });
       queryClient.invalidateQueries({ queryKey: ['equipment-available'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      queryClient.invalidateQueries({ queryKey: ['collaborators'] });
       toast({ title: 'Termo criado com sucesso!' });
       navigate('/termos');
     },
@@ -166,7 +215,78 @@ export default function NewTerm() {
 
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome do Colaborador</Label>
-              <Input value={collaboratorName} onChange={e => setCollaboratorName(e.target.value)} placeholder="Nome completo do colaborador" required className="rounded-xl" />
+              <Popover open={collabOpen} onOpenChange={setCollabOpen}>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="outline" role="combobox" className="w-full justify-between rounded-xl font-normal">
+                    {collaboratorName ? <span className="truncate">{collaboratorName}</span> : <span className="text-muted-foreground">Nome completo do colaborador</span>}
+                    <ChevronsUpDown className="h-4 w-4 opacity-50 flex-shrink-0" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput value={collaboratorName} onValueChange={setCollaboratorName} placeholder="Digite o nome do colaborador..." />
+                    <CommandList>
+                      <CommandEmpty>Digite para cadastrar um novo colaborador.</CommandEmpty>
+                      {collabSuggestions.length > 0 && (
+                        <CommandGroup heading="Colaboradores existentes">
+                          {collabSuggestions.map(c => (
+                            <CommandItem key={c.key} value={c.displayName} onSelect={() => { setCollaboratorName(c.displayName); setCollabOpen(false); }}>
+                              <Check className={cn('mr-2 h-4 w-4', matchedCollaborator?.key === c.key ? 'opacity-100' : 'opacity-0')} />
+                              <span className="flex-1 truncate">{c.displayName}</span>
+                              <span className="text-xs text-muted-foreground ml-2">{c.equipmentCount} equip.</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      )}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+
+              {matchedCollaborator && matchedCollaborator.equipmentCount > 0 && (
+                <div className="rounded-xl border border-warning/40 bg-warning/5 p-3 text-xs space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-semibold text-foreground/90">
+                    <Monitor className="h-3.5 w-3.5 text-warning" />
+                    Este colaborador já possui {matchedCollaborator.equipmentCount} equipamento(s):
+                  </div>
+                  <ul className="list-disc pl-5 text-muted-foreground space-y-0.5">
+                    {matchedCollaborator.heldEquipment.map(e => (
+                      <li key={e.id}>{e.brand} {e.model} — SN: {e.serial_number}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Setor do Colaborador</Label>
+              <Popover open={sectorOpen} onOpenChange={setSectorOpen}>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="outline" role="combobox" className="w-full justify-between rounded-xl font-normal">
+                    {sectorName ? <span className="truncate">{sectorName}</span> : <span className="text-muted-foreground">Ex: Financeiro, TI, Operações...</span>}
+                    <ChevronsUpDown className="h-4 w-4 opacity-50 flex-shrink-0" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput value={sectorName} onValueChange={setSectorName} placeholder="Digite o setor..." />
+                    <CommandList>
+                      <CommandEmpty>Digite para cadastrar um novo setor.</CommandEmpty>
+                      {sectorSuggestions.length > 0 && (
+                        <CommandGroup heading="Setores existentes">
+                          {sectorSuggestions.map(s => (
+                            <CommandItem key={s} value={s} onSelect={() => { setSectorName(s); setSectorOpen(false); }}>
+                              <Check className={cn('mr-2 h-4 w-4', normalizeName(sectorName) === normalizeName(s) ? 'opacity-100' : 'opacity-0')} />
+                              <Building2 className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="truncate">{s}</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      )}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
@@ -189,7 +309,12 @@ export default function NewTerm() {
               <p className="text-sm whitespace-pre-line text-muted-foreground leading-relaxed">{settings?.term_text || 'Carregando...'}</p>
             </div>
 
-            <Button type="submit" className="w-full h-12 rounded-xl font-bold shadow-md shadow-primary/20 text-sm" disabled={createMutation.isPending || !equipmentId || !analystId || !collaboratorName || !ticketNumber}>
+            {missingFields.length > 0 && (
+              <p className="text-xs text-muted-foreground text-center">
+                Preencha para continuar: <span className="font-semibold text-foreground/80">{missingFields.join(', ')}</span>
+              </p>
+            )}
+            <Button type="submit" className="w-full h-12 rounded-xl font-bold shadow-md shadow-primary/20 text-sm" disabled={createMutation.isPending || missingFields.length > 0}>
               {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Gerar Termo de Responsabilidade
             </Button>

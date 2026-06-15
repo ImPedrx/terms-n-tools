@@ -6,9 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, Trash2, CheckCircle2, Send, XCircle, Plus, Search, FolderOpen, FileText } from 'lucide-react';
+import { Eye, Trash2, CheckCircle2, Send, XCircle, Plus, Search, FolderOpen, FileText, Pencil, Users, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { TermPreviewDialog } from '@/components/TermPreviewDialog';
+import { EditTermDialog } from '@/components/EditTermDialog';
+import { CollaboratorsTab } from '@/components/collaborators/CollaboratorsTab';
+import { SectorsTab } from '@/components/collaborators/SectorsTab';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -16,6 +20,11 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useTenant } from '@/contexts/TenantContext';
+import { usePagination } from '@/hooks/usePagination';
+import { TablePagination } from '@/components/TablePagination';
+import type { Database } from '@/integrations/supabase/types';
+
+type Term = Database['public']['Tables']['responsibility_terms']['Row'];
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'Todos os status' },
@@ -42,6 +51,7 @@ export default function TermsControl() {
   const navigate = useNavigate();
   const [previewTermId, setPreviewTermId] = useState<string | null>(null);
   const [deleteTermId, setDeleteTermId] = useState<string | null>(null);
+  const [editTerm, setEditTerm] = useState<Term | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const { effectiveClientId, isAdmin } = useTenant();
@@ -62,10 +72,19 @@ export default function TermsControl() {
       if (error) throw error;
       const { logAudit } = await import('@/lib/audit');
       await logAudit({ action: 'update', entity_type: 'term', entity_id: termId, description: `Status do termo alterado para ${newStatus}` });
+      const term = terms?.find(t => t.id === termId);
       if (newStatus === 'fechado') {
-        const term = terms?.find(t => t.id === termId);
         if (term?.equipment_id) {
           await supabase.from('equipment').update({ status: 'entregue' as const, assigned_to: term.collaborator_name, assigned_term_id: termId }).eq('id', term.equipment_id);
+        }
+      } else if (newStatus === 'cancelado') {
+        // Ao cancelar, o equipamento volta a ficar disponível — só libera
+        // se estiver vinculado a ESTE termo, para não desfazer outra atribuição.
+        if (term?.equipment_id) {
+          await supabase.from('equipment')
+            .update({ status: 'disponivel' as const, assigned_to: null, assigned_term_id: null })
+            .eq('id', term.equipment_id)
+            .eq('assigned_term_id', termId);
         }
       }
     },
@@ -115,6 +134,8 @@ export default function TermsControl() {
     return true;
   }) || [];
 
+  const pagination = usePagination(filtered, 20);
+
   return (
     <div className="animate-fade-in space-y-6">
       {/* Header */}
@@ -133,6 +154,14 @@ export default function TermsControl() {
         </Button>
       </div>
 
+      <Tabs defaultValue="termos" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="termos" className="gap-1.5"><FolderOpen className="h-3.5 w-3.5" /> Termos</TabsTrigger>
+          <TabsTrigger value="colaboradores" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Colaboradores</TabsTrigger>
+          <TabsTrigger value="setores" className="gap-1.5"><Building2 className="h-3.5 w-3.5" /> Setores</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="termos" className="space-y-6">
       {/* SharePoint reminder */}
       <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 text-xs text-foreground/80 flex items-start gap-2">
         <FileText className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
@@ -152,10 +181,6 @@ export default function TermsControl() {
           <SelectContent>{STATUS_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
         </Select>
       </div>
-
-      <p className="text-xs text-muted-foreground font-medium">
-        {filtered.length} termo{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
-      </p>
 
       <div className="pro-table">
         <Table>
@@ -179,7 +204,7 @@ export default function TermsControl() {
                   <span className="text-sm">Carregando...</span>
                 </div>
               </TableCell></TableRow>
-            ) : filtered.length === 0 ? (
+            ) : pagination.total === 0 ? (
               <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                 <div className="flex flex-col items-center gap-2">
                   <FileText className="h-10 w-10 text-muted-foreground/20" />
@@ -187,7 +212,7 @@ export default function TermsControl() {
                   <span className="text-xs">Tente ajustar os filtros ou crie um novo termo</span>
                 </div>
               </TableCell></TableRow>
-            ) : filtered.map((term, i) => (
+            ) : pagination.paged.map((term, i) => (
               <TableRow key={term.id} className={i % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'}>
                 <TableCell><code className="text-xs bg-muted px-2 py-1 rounded-md font-mono font-semibold">{term.ticket_number}</code></TableCell>
                 <TableCell className="font-medium text-sm">{term.collaborator_name}</TableCell>
@@ -199,6 +224,7 @@ export default function TermsControl() {
                 <TableCell>
                   <div className="flex gap-0.5 flex-wrap">
                     <Button variant="ghost" size="icon" onClick={() => setPreviewTermId(term.id)} title="Visualizar / Baixar PDF" className="h-8 w-8 rounded-lg hover:bg-primary/10"><Eye className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setEditTerm(term)} title="Editar chamado / colaborador" className="h-8 w-8 rounded-lg hover:bg-primary/10"><Pencil className="h-3.5 w-3.5" /></Button>
                     {term.status === 'pendente' && (
                       <Button variant="ghost" size="icon" onClick={() => updateStatusMutation.mutate({ termId: term.id, newStatus: 'enviado_para_assinatura' })} title="Marcar como enviado" className="h-8 w-8 rounded-lg hover:bg-primary/10"><Send className="h-3.5 w-3.5 text-primary" /></Button>
                     )}
@@ -217,7 +243,26 @@ export default function TermsControl() {
         </Table>
       </div>
 
+      <TablePagination
+        page={pagination.page} totalPages={pagination.totalPages}
+        from={pagination.from} to={pagination.to} total={pagination.total}
+        canPrev={pagination.canPrev} canNext={pagination.canNext}
+        onPrev={pagination.prev} onNext={pagination.next}
+        label="termos"
+      />
+        </TabsContent>
+
+        <TabsContent value="colaboradores">
+          <CollaboratorsTab />
+        </TabsContent>
+
+        <TabsContent value="setores">
+          <SectorsTab />
+        </TabsContent>
+      </Tabs>
+
       {previewTermId && <TermPreviewDialog termId={previewTermId} onClose={() => setPreviewTermId(null)} />}
+      {editTerm && <EditTermDialog term={editTerm} onClose={() => setEditTerm(null)} />}
 
       <AlertDialog open={!!deleteTermId} onOpenChange={() => setDeleteTermId(null)}>
         <AlertDialogContent>
