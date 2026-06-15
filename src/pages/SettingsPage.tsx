@@ -18,9 +18,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { Language } from '@/lib/i18n';
 import type { Notice } from '@/hooks/useSettings';
+import { useTenant } from '@/contexts/TenantContext';
+
 
 export default function SettingsPage() {
   const { data: settings, isLoading } = useSettings();
+  const { effectiveClientId } = useTenant();
+
   const [termText, setTermText] = useState('');
   const [language, setLanguage] = useState<Language>('pt');
   const [logoUrl, setLogoUrl] = useState('');
@@ -134,10 +138,14 @@ export default function SettingsPage() {
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!effectiveClientId) {
+      toast({ title: 'Selecione um cliente para enviar o logo', variant: 'destructive' });
+      return;
+    }
     setUploading(true);
     try {
       const ext = file.name.split('.').pop();
-      const path = `logo.${ext}`;
+      const path = `${effectiveClientId}/logo.${ext}`;
       await supabase.storage.from('company-assets').remove([path]);
       const { error } = await supabase.storage.from('company-assets').upload(path, file, { upsert: true });
       if (error) throw error;
@@ -149,6 +157,7 @@ export default function SettingsPage() {
       setUploading(false);
     }
   };
+
 
   const handleRemoveLogo = () => setLogoUrl('');
   const updateSerialLength = (equipType: string, length: number) => {
