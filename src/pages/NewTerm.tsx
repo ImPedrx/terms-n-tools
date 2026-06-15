@@ -98,6 +98,28 @@ export default function NewTerm() {
     }
   };
 
+  // Coletor de código de barras "digita" o serial rápido e não envia Enter.
+  // Após uma breve pausa (fim da bipagem), adiciona automaticamente se o serial
+  // bater exato com um equipamento. Em match parcial / inexistente fica em
+  // silêncio (digitação ainda em curso); o Enter continua dando feedback explícito.
+  useEffect(() => {
+    const serial = serialSearch.trim();
+    if (!serial) return;
+    const timer = setTimeout(() => {
+      const { assets: next, status } = addBySerial(assets, equipment || [], serial);
+      if (status === 'added') {
+        setAssets(next);
+        setSerialSearch('');
+        toast({ title: 'Equipamento adicionado' });
+      } else if (status === 'duplicate') {
+        setSerialSearch('');
+        toast({ title: 'Equipamento já adicionado', variant: 'destructive' });
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serialSearch, equipment, assets]);
+
   const ready = canGenerate({ collaboratorName, sectorName, analystId }, assets);
 
   const createMutation = useMutation({
