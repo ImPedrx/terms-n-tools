@@ -12,7 +12,27 @@ interface Props {
   onClose: () => void;
 }
 
-function buildDocumentHtml(term: any, logoUrl: string, lang: Language) {
+function esc(v: unknown): string {
+  return String(v ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildDocumentHtml(rawTerm: any, rawLogoUrl: string, lang: Language) {
+  const term = {
+    equipment_description: esc(rawTerm.equipment_description),
+    serial_number: esc(rawTerm.serial_number),
+    patrimony: rawTerm.patrimony ? esc(rawTerm.patrimony) : '',
+    collaborator_name: esc(rawTerm.collaborator_name),
+    analyst_name: esc(rawTerm.analyst_name),
+    ticket_number: esc(rawTerm.ticket_number),
+    term_text: esc(rawTerm.term_text),
+    created_at: rawTerm.created_at,
+  };
+  const logoUrl = esc(rawLogoUrl);
   return `<html><head><title>${t(lang, 'term_title')}</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
