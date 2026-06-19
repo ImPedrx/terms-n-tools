@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This repository contains the **Aerrnova IT Tools** application — an internal IT equipment inventory and responsibility term management system — plus its full CI/CD pipeline to AWS.
+This repository contains the **Auksys IT Tools** application — an internal IT equipment inventory and responsibility term management system — plus its full CI/CD pipeline to AWS.
 
 The stack is:
 - **Frontend:** React 18 + TypeScript + Vite, in `terms-n-tools/`
@@ -30,8 +30,8 @@ npm run preview      # Preview production build locally
 
 Docker (from repo root):
 ```bash
-docker build -t aerrnova ./terms-n-tools
-docker run -d -p 9090:80 --name aerrnova aerrnova
+docker build -t auksys ./terms-n-tools
+docker run -d -p 9090:80 --name auksys auksys
 ```
 
 ## Environment Variables
